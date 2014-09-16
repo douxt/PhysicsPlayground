@@ -1,5 +1,5 @@
-#ifndef __HELLOWORLD_SCENE_H__
-#define __HELLOWORLD_SCENE_H__
+#ifndef __MainScene__
+#define __MainScene__
 
 #include "cocos2d.h"
 #include "Box2D/Box2D.h"
@@ -7,16 +7,17 @@
 #include "extensions/cocos-ext.h"
 #include "ui/CocosGUI.h"
 #include "PopMenu.h"
+#include "MenuLayer.h"
 USING_NS_CC;
 USING_NS_CC_EXT;
 using namespace cocos2d::ui;
 
 
-class HelloWorld : public cocos2d::Layer
+class MainScene : public cocos2d::Layer
 {
 public:
 
-	HelloWorld():_label(nullptr),_isDelete(false){}
+	MainScene():_label(nullptr),_isDelete(false){}
 
 
     // there's no 'id' in cpp, so we recommend returning the class instance pointer
@@ -41,7 +42,7 @@ public:
 	void menuConfirmCallback(Ref* pSender, Widget::TouchEventType type);
 
     // implement the "static create()" method manually
-    CREATE_FUNC(HelloWorld);
+    CREATE_FUNC(MainScene);
 
 	void draw(Renderer *renderer, const Mat4 &transform, uint32_t flags);
 	void onDraw(const Mat4 &transform, uint32_t flags);
@@ -63,13 +64,17 @@ public:
 
 	void addCustomPolygon();
 
+	void clearMarks();
+
+public:
+	CC_SYNTHESIZE(bool, _isDelete, IsDelete);
+
 private:
-		CustomCommand _customCmd;
-		LabelTTF* _label;
-		Vector<DrawNode*> _marks;
-		DrawNode* _movingMark;
-		bool _isDelete;
-		PopMenu* _popCurrent;
+	CustomCommand _customCmd;
+	LabelTTF* _label;
+	Vector<DrawNode*> _marks;
+	DrawNode* _movingMark;
+	PopMenu* _popCurrent;
 };
 
-#endif // __HELLOWORLD_SCENE_H__
+#endif // __MAIN_SCENE_H__

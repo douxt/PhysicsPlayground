@@ -85,12 +85,16 @@ void PopMenu::popEnter()
 	auto fuc =[&](){
 		this->_isEntering = false;
 		this->_isEntered = true;
+		auto zOrder = this->getLocalZOrder();
+		this->setLocalZOrder(zOrder - 10);
 	}; 
 	auto callback = CallFunc::create(fuc);
 	auto seq = Sequence::create(move, callback, nullptr);
 	_listView->runAction(seq);
 	this->setVisible(true);
 	this->_isEntering=true;
+	auto zOrder = this->getLocalZOrder();
+	this->setLocalZOrder(zOrder + 10);
 }
 
 void PopMenu::popExit()
