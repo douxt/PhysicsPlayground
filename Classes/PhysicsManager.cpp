@@ -2,7 +2,7 @@
 
 PhysicsManager* PhysicsManager::_physicsManager = nullptr;
 
-PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(3),
+PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0),
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
 _groundBody(nullptr)
 {}
@@ -95,6 +95,11 @@ bool PhysicsManager::init()
 
 void PhysicsManager::addRegularPolygon(Point pos, float radias)
 {
+	if(_sideNum == 0)
+	{
+		addCircle(pos, radias);
+		return;
+	}
 	b2BodyDef bodydef;
 	bodydef.type = b2_dynamicBody;
 
@@ -133,6 +138,34 @@ void PhysicsManager::addRegularPolygon(Point pos, float radias)
 			body->GetAngle());
 	}
 	delete [] points;
+}
+
+void PhysicsManager::addCircle(Point pos, float radias)
+{
+	b2BodyDef bodyDef;
+	bodyDef.type = b2_dynamicBody;
+
+	auto body = _world->CreateBody(&bodyDef);
+	body->SetSleepingAllowed(true);
+	body->SetLinearDamping(0.2);
+	body->SetAngularDamping(0.2);
+
+	b2CircleShape shape;
+	shape.m_radius = radias / PTM_RATIO;
+
+	b2FixtureDef fixtureDef;
+	fixtureDef.shape = &shape;
+	fixtureDef.density = 15;
+	fixtureDef.restitution = 0.8f;
+	fixtureDef.friction = 0.2f;
+	body->CreateFixture(&fixtureDef);
+
+	if(body){
+		body->SetTransform(b2Vec2(
+			pos.x / PTM_RATIO,
+			pos.y / PTM_RATIO),
+			body->GetAngle());
+	}
 }
 
 void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)

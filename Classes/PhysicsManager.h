@@ -15,7 +15,8 @@ public:
 	{
 		MOVE_TYPE,
 		ADD_TYPE,
-		ADD_CUSTOM_TYPE
+		ADD_CUSTOM_TYPE,
+		ADD_JOINT_TYPE
 		
 	};
 	static PhysicsManager* getInstance();
@@ -28,6 +29,7 @@ public:
 	void MouseMove(const Vec2& pos);
 
 	void addCustomPolygon(const std::vector<Vec2>& points);
+	void addCircle(Point pos, float radias);
 
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);

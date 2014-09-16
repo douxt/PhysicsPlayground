@@ -6,7 +6,7 @@
 #include "GLES-Render.h"
 #include "extensions/cocos-ext.h"
 #include "ui/CocosGUI.h"
-
+#include "PopMenu.h"
 USING_NS_CC;
 USING_NS_CC_EXT;
 using namespace cocos2d::ui;
@@ -69,6 +69,7 @@ private:
 		Vector<DrawNode*> _marks;
 		DrawNode* _movingMark;
 		bool _isDelete;
+		PopMenu* _popCurrent;
 };
 
 #endif // __HELLOWORLD_SCENE_H__
