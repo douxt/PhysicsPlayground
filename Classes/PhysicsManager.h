@@ -16,8 +16,7 @@ public:
 		MOVE_TYPE,
 		ADD_TYPE,
 		ADD_CUSTOM_TYPE,
-		ADD_JOINT_TYPE
-		
+		ADD_JOINT_TYPE		
 	};
 	static PhysicsManager* getInstance();
 	static void purgeInstance();
@@ -30,6 +29,9 @@ public:
 
 	void addCustomPolygon(const std::vector<Vec2>& points);
 	void addCircle(Point pos, float radias);
+
+	b2Body* getBodyAt(const Vec2& pos);
+	void addWheelJoint(const Vec2& pos);
 
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
@@ -49,6 +51,8 @@ private:
 	b2Vec2 _mouseWorld;
 	b2MouseJoint* _mouseJoint;
 	b2Body* _groundBody;
+	b2Body* _car;
+	b2Body* _wheel;
 };
 
 

@@ -4,7 +4,7 @@ PhysicsManager* PhysicsManager::_physicsManager = nullptr;
 
 PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0),
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
-_groundBody(nullptr)
+_groundBody(nullptr),_car(nullptr),_wheel(nullptr)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -181,10 +181,17 @@ void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)
 	int num = points.size();
 
 	auto pts = new b2Vec2[num];
-	
+	b2Vec2 middle = b2Vec2(0, 0);
+
 	for(int i=0; i<num; i++)
 	{
-		pts[i] = b2Vec2(points[i].x / PTM_RATIO, points[i].y / PTM_RATIO);
+		middle += b2Vec2(points[i].x / PTM_RATIO, points[i].y / PTM_RATIO);
+	}
+	middle = b2Vec2(middle.x/num, middle.y/num);
+
+	for(int i=0; i<num; i++)
+	{
+		pts[i] = b2Vec2(points[i].x / PTM_RATIO - middle.x, points[i].y / PTM_RATIO - middle.y);
 	}
 //	_body->SetFixedRotation(true);
 	b2PolygonShape shape;
@@ -199,6 +206,11 @@ void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)
 	fixtureDef.friction = 0.2f;
 	body->CreateFixture(&fixtureDef);
 
+	if(body){
+		body->SetTransform(
+			middle,
+			body->GetAngle());
+	}
 	delete [] pts;
 }
 
@@ -295,5 +307,61 @@ void PhysicsManager::MouseMove(const Vec2& pos)
 	if (_mouseJoint)
 	{
 		_mouseJoint->SetTarget(p);
+	}
+}
+
+b2Body* PhysicsManager::getBodyAt(const Vec2& pos)
+{
+	b2Vec2 p = b2Vec2(pos.x/PTM_RATIO, pos.y/PTM_RATIO);
+	
+	// Make a small box.
+	b2AABB aabb;
+	b2Vec2 d;
+	d.Set(0.001f, 0.001f);
+	aabb.lowerBound = p - d;
+	aabb.upperBound = p + d;
+
+	// Query the world for overlapping shapes.
+	QueryCallback callback(p);
+	_world->QueryAABB(&callback, aabb);
+
+	if (callback.m_fixture)
+	{
+		b2Body* body = callback.m_fixture->GetBody();
+		if(body)
+			return body;
+	}
+    
+    return nullptr;
+}
+
+void PhysicsManager::addWheelJoint(const Vec2& pos)
+{
+	b2Vec2 p = b2Vec2(pos.x/PTM_RATIO, pos.y/PTM_RATIO);
+	b2Body* body = getBodyAt(pos);
+	if(body)
+	{
+		if(!_car)
+		{
+			_car = body;
+		}
+		else
+		{
+			auto m_hz = 4.0f;
+			auto m_zeta = 0.7f;
+			_wheel = body;
+			b2WheelJointDef jd;
+			b2Vec2 axis(0.0f, 1.0f);
+
+			jd.Initialize(_car, _wheel, _wheel->GetPosition(), axis);
+			jd.motorSpeed = 0.0f;
+			jd.maxMotorTorque = 20.0f;
+			jd.enableMotor = true;
+			jd.frequencyHz = m_hz;
+			jd.dampingRatio = m_zeta;
+			_world->CreateJoint(&jd);
+			_car = nullptr;
+			_wheel = nullptr;
+		}
 	}
 }
