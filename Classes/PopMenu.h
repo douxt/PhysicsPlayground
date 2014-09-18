@@ -26,6 +26,7 @@ public:
 	void reName(const std::string& oldName, const std::string& newName);
 private:
 	ListView* _listView;
+	Layout* _layout;
 	std::unordered_map<std::string, std::function<void()>> _callbacks;
 	float _buttonScale;
 	int _titleFontSize;

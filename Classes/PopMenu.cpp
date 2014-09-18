@@ -4,10 +4,15 @@
 
 bool PopMenu::init()
 {
-	_listView = ui::ListView::create();
+	_listView = ListView::create();
 	_listView->setDirection(ui::ScrollView::Direction::VERTICAL);
 	_listView->addEventListener((ui::ListView::ccListViewCallback)CC_CALLBACK_2(PopMenu::selectedItemEvent, this));
-	this->addChild(_listView);
+	_listView->setBackGroundColor(Color3B::ORANGE);
+	_listView->setBackGroundColorOpacity(200);
+	_layout = Layout::create();
+	_layout->addChild(_listView);
+	_layout->setBackGroundColor(Color3B::BLUE);
+	this->addChild(_layout);
 	_buttonScale = 1.5f;
 	_titleFontSize = 18;
 	_pos = Vec2(0, 0);
@@ -16,6 +21,7 @@ bool PopMenu::init()
 	_isEntering = false;
 	_margin = 0;
 	this->setVisible(false);
+//	this->setContentSize(_listView->getContentSize());
 	return true;
 }
 
@@ -56,6 +62,7 @@ void PopMenu::addButton(const std::string& name, std::function<void()> callback)
     Button* custom_button = Button::create("cocosui/backtotoppressed.png", "cocosui/backtotopnormal.png");
     custom_button->setName(name);
 	custom_button->setTitleText(name);
+	custom_button->setTitleFontName("fonts/Marker Felt.ttf");
     custom_button->setScale9Enabled(true);
     custom_button->setContentSize(custom_button->getContentSize() * _buttonScale);
 	custom_button->setTitleFontSize(_titleFontSize);
@@ -73,6 +80,8 @@ void PopMenu::addButton(const std::string& name, std::function<void()> callback)
             
     _listView->addChild(custom_item);
 	_listView->setContentSize(Size(custom_button->getContentSize().width, _listView->getChildrenCount()*custom_button->getContentSize().height));
+	_layout->setContentSize(_listView->getContentSize());
+
 }
 
 void PopMenu::popEnter()

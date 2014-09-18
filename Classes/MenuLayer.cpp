@@ -17,10 +17,11 @@ void MenuLayer::addUI()
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
 	_popCurrent = nullptr;
 
-	_label = LabelTTF::create("Hello World", "Arial", 24);
+	_label = LabelTTF::create("Hello World", "fonts/Marker Felt.ttf", 24);
     _label->setString("   Mode:Move");
 	_label->setPosition(origin.x + _label->getContentSize().width, origin.y + visibleSize.height - _label->getContentSize().height);
 	this->addChild(_label);
+//	_label->setVisible(false);
 //	addUI();
 	auto pop = PopMenu::create();
 	pop->addButton("Move",[](){log("Test1 Touched!");});
@@ -32,7 +33,6 @@ void MenuLayer::addUI()
 	pop->setLocalZOrder(100);
 	pop->popEnter();
 
-	
 	pop->setCallback("Move",[&](){
 		PhysicsManager::getInstance()->setTouchType(PhysicsManager::MOVE_TYPE);
 		_label->setString("Mode:Move");
@@ -54,7 +54,7 @@ void MenuLayer::addUI()
 	popRegular->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
 	popRegular->setMargin(10);
 	this->addChild(popRegular);
-
+//	popRegular->setLocalZOrder(100);
 	pop->setCallback("Add Regular",[&,popRegular](){
 		if(PhysicsManager::getInstance()->getTouchType()!=PhysicsManager::ADD_TYPE)
 		{
