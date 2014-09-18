@@ -66,6 +66,7 @@ void PopMenu::addButton(const std::string& name, std::function<void()> callback)
 	//custom_button->addTouchEventListener(func);
             
     Layout *custom_item = Layout::create();
+	custom_item->setName(name);
     custom_item->setContentSize(custom_button->getContentSize());
     custom_button->setPosition(Vec2(custom_item->getContentSize().width / 2.0f, custom_item->getContentSize().height / 2.0f));
     custom_item->addChild(custom_button);
@@ -130,4 +131,13 @@ void PopMenu::setCallback(const std::string& name, std::function<void()> callbac
 const Size& PopMenu::getListViewContentSize() const
 {
 	return _listView->getContentSize();
+}
+
+void PopMenu::reName(const std::string& oldName, const std::string& newName)
+{
+	auto layout =_listView->getChildByName(oldName);
+	layout->setName(newName);
+	auto item = dynamic_cast<Button*>(layout->getChildren().at(0));
+	item->setName(newName);
+	item->setTitleText(newName);
 }

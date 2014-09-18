@@ -23,6 +23,7 @@ public:
 	void popToggle();
 	void setCallback(const std::string& name, std::function<void()> callback);
 	const Size& getListViewContentSize() const;
+	void reName(const std::string& oldName, const std::string& newName);
 private:
 	ListView* _listView;
 	std::unordered_map<std::string, std::function<void()>> _callbacks;

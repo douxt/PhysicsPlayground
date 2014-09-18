@@ -4,7 +4,7 @@ PhysicsManager* PhysicsManager::_physicsManager = nullptr;
 
 PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0),
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
-_groundBody(nullptr),_car(nullptr),_wheel(nullptr)
+_groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -63,7 +63,7 @@ bool PhysicsManager::init()
 	b2BodyDef bodyDef;
 	_groundBody = _world->CreateBody(&bodyDef);
 
-
+	_isPaused = false;
 //	addBlock(Point(500, 500),Size(100, 50));
 	addRegularPolygon(Point(500, 500), 50);
 
@@ -216,7 +216,7 @@ void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)
 
 bool PhysicsManager::isMovingBody()
 {
-	return (_touchType == MOVE_TYPE) && (_mouseJoint !=nullptr);
+	return (_touchType == MOVE_TYPE) && (_mouseJoint != nullptr || _movingBody != nullptr);
 }
 
 
@@ -257,7 +257,12 @@ bool PhysicsManager::MouseDown(const Vec2& pos)
 {
 	b2Vec2 p = b2Vec2(pos.x/PTM_RATIO, pos.y/PTM_RATIO);
 	_mouseWorld = p;
-	
+
+	if(_isPaused)
+	{
+		return pauseMouseDown(pos);
+	}
+
 	if (_mouseJoint != nullptr)
 	{
 		return false;
@@ -290,6 +295,20 @@ bool PhysicsManager::MouseDown(const Vec2& pos)
     return true;
 }
 
+bool PhysicsManager::pauseMouseDown(const Vec2& pos)
+{
+	if(_movingBody)
+		return false;
+
+	b2Body* body = getBodyAt(pos);
+	if(body)
+	{
+		_movingBody = body;
+		return true;
+	}
+	return true;
+}
+
 void PhysicsManager::MouseUp(const Vec2& pos)
 {
 	if (_mouseJoint)
@@ -297,16 +316,26 @@ void PhysicsManager::MouseUp(const Vec2& pos)
 		_world->DestroyJoint(_mouseJoint);
 		_mouseJoint = nullptr;
 	}
+	if(_movingBody)
+	{
+		_movingBody = nullptr;
+	}
 }
 
 void PhysicsManager::MouseMove(const Vec2& pos)
 {
 	b2Vec2 p = b2Vec2(pos.x/PTM_RATIO, pos.y/PTM_RATIO);
+	b2Vec2 delta = p - _mouseWorld;
 	_mouseWorld = p;
 	
 	if (_mouseJoint)
 	{
 		_mouseJoint->SetTarget(p);
+	}
+
+	if(_movingBody)
+	{
+		_movingBody->SetTransform(_movingBody->GetPosition() + delta, _movingBody->GetAngle());
 	}
 }
 
@@ -364,4 +393,32 @@ void PhysicsManager::addWheelJoint(const Vec2& pos)
 			_wheel = nullptr;
 		}
 	}
+}
+
+void PhysicsManager::pause()
+{
+	_isPaused = true;
+}
+
+void PhysicsManager::resume()
+{
+	_isPaused = false;
+}
+
+void PhysicsManager::update(float dt)
+{
+	if(!_isPaused)
+	{
+		_world->Step(dt, 8, 8);
+	}
+}
+
+void PhysicsManager::togglePause()
+{
+	_isPaused = !_isPaused;
+}
+
+void PhysicsManager::setGravity(const Vec2& gravity)
+{
+	_world->SetGravity(b2Vec2(gravity.x, gravity.y));
 }

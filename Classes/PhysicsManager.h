@@ -16,7 +16,8 @@ public:
 		MOVE_TYPE,
 		ADD_TYPE,
 		ADD_CUSTOM_TYPE,
-		ADD_JOINT_TYPE		
+		ADD_JOINT_TYPE,
+		SET_GRAVITY_TYPE
 	};
 	static PhysicsManager* getInstance();
 	static void purgeInstance();
@@ -27,11 +28,18 @@ public:
 	void MouseUp(const Vec2& pos);
 	void MouseMove(const Vec2& pos);
 
+	bool pauseMouseDown(const Vec2& pos);
+
 	void addCustomPolygon(const std::vector<Vec2>& points);
 	void addCircle(Point pos, float radias);
 
 	b2Body* getBodyAt(const Vec2& pos);
 	void addWheelJoint(const Vec2& pos);
+	void update(float dt);
+	void pause();
+	void resume();
+	void togglePause();
+	void setGravity(const Vec2& gravity);
 
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
@@ -53,6 +61,8 @@ private:
 	b2Body* _groundBody;
 	b2Body* _car;
 	b2Body* _wheel;
+	bool _isPaused;
+	b2Body* _movingBody;
 };
 
 

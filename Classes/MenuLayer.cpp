@@ -108,6 +108,29 @@ void MenuLayer::addUI()
 			_popCurrent = popJoint;
 		}
 	});
+
+	PopMenu* popPause = PopMenu::create();
+	popPause->addButton("Pause", nullptr);
+	popPause->addButton("Gravity",nullptr);
+	popPause->setPosition(origin.x, origin.y + visibleSize.height);
+	popPause->setMargin(50);
+	this->addChild(popPause);
+
+	popPause->setCallback("Pause", [&,popPause](){
+		PhysicsManager::getInstance()->pause();
+		popPause->reName("Pause","Resume");
+	});
+
+	popPause->setCallback("Resume",[&,popPause](){
+		PhysicsManager::getInstance()->resume();
+		popPause->reName("Resume","Pause");
+	});
+
+	popPause->setCallback("Gravity",[&](){
+		PhysicsManager::getInstance()->setTouchType(PhysicsManager::SET_GRAVITY_TYPE);
+		_label->setString("Mode:Set Gravity");
+	});
+	popPause->popEnter();
 }
 
 void MenuLayer::setMainScene(MainScene* mainScene)

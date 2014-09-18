@@ -93,7 +93,7 @@ void MainScene::onDraw(const Mat4 &transform, uint32_t flags)
 
 void MainScene::update(float dt)
 {
-	PhysicsManager::getInstance()->getWorld()->Step(dt, 8, 8);
+	PhysicsManager::getInstance()->update(dt);
 }
 
 
@@ -138,6 +138,13 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 		PhysicsManager::getInstance()->addWheelJoint(nodePosition);
 		return false;
 	}
+
+	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::SET_GRAVITY_TYPE)
+	{
+		//auto touchLocation = touch->getLocation();    
+		//auto nodePosition = convertToNodeSpace( touchLocation );
+		return true;
+	}
 	return false;
 }
 
@@ -163,6 +170,15 @@ void MainScene::onTouchEnded(Touch* touch, Event* event)
 		log("MainScene::onTouchEnded, pos: %f,%f -> %f,%f", touchLocation.x, touchLocation.y, nodePosition.x, nodePosition.y);
 		PhysicsManager::getInstance()->MouseUp(nodePosition);
 //		MouseUp(b2Vec2(nodePosition.x/PTM_RATIO,nodePosition.y/PTM_RATIO));
+	}
+	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::SET_GRAVITY_TYPE)
+	{
+		//auto touchLocation = touch->getLocation();    
+		//auto nodePosition = convertToNodeSpace( touchLocation );
+		auto gravity = (touch->getLocation() - touch->getStartLocation())/10;
+		PhysicsManager::getInstance()->setGravity(gravity);
+		log("gravity: %f, %f", gravity.x, gravity.y);
+//		PhysicsManager::getInstance()->setTouchType(PhysicsManager::MOVE_TYPE);
 	}
 
 }
