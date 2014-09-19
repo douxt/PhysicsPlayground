@@ -42,6 +42,7 @@ bool MainScene::init()
 
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
 
+
     return true;
 }
 
@@ -128,6 +129,15 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 		auto touchLocation = touch->getLocation();    
 		auto nodePosition = convertToNodeSpace( touchLocation );
 		log("MainScene::onTouchBegan, pos: %f,%f -> %f,%f", touchLocation.x, touchLocation.y, nodePosition.x, nodePosition.y);
+		struct timeval now;
+		gettimeofday(&now, NULL);
+		auto nowTime = now.tv_sec*1000 + now.tv_usec/1000;
+		if(nowTime - _preTime < 200){
+			NotificationCenter::getInstance()->postNotification("toggleMenu", nullptr);
+			log("Message: toggleMenu sent.");
+		}
+		_preTime = nowTime;
+//		log("sec: %ld, usec: %ld", now.tv_sec, now.tv_usec);
 		return PhysicsManager::getInstance()->MouseDown(nodePosition);
 	}
 
@@ -145,6 +155,14 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 		//auto nodePosition = convertToNodeSpace( touchLocation );
 		return true;
 	}
+
+	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::DELETE_TYPE)
+	{
+		auto touchLocation = touch->getLocation();    
+		auto nodePosition = convertToNodeSpace( touchLocation );
+		PhysicsManager::getInstance()->deleteBodyAt(nodePosition);
+		return false;
+	}
 	return false;
 }
 
@@ -153,7 +171,7 @@ void MainScene::onTouchEnded(Touch* touch, Event* event)
 	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::ADD_TYPE)
 	{
 		auto pos = this->convertToNodeSpace(touch->getLocation());
-		PhysicsManager::getInstance()->addRegularPolygon(pos, 50);
+		PhysicsManager::getInstance()->addRegularPolygon(pos);
 	}
 
 	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::ADD_CUSTOM_TYPE)

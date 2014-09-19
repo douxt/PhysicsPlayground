@@ -62,10 +62,10 @@ bool PhysicsManager::init()
 
 	b2BodyDef bodyDef;
 	_groundBody = _world->CreateBody(&bodyDef);
-
+	_size = 50;
 	_isPaused = false;
 //	addBlock(Point(500, 500),Size(100, 50));
-	addRegularPolygon(Point(500, 500), 50);
+	addRegularPolygon(Point(500, 500));
 
 
 	b2BodyDef tableBodyDef;
@@ -93,11 +93,11 @@ bool PhysicsManager::init()
 	return true;
 }
 
-void PhysicsManager::addRegularPolygon(Point pos, float radias)
+void PhysicsManager::addRegularPolygon(Point pos)
 {
 	if(_sideNum == 0)
 	{
-		addCircle(pos, radias);
+		addCircle(pos, _size);
 		return;
 	}
 	b2BodyDef bodydef;
@@ -109,7 +109,7 @@ void PhysicsManager::addRegularPolygon(Point pos, float radias)
 	body->SetAngularDamping(0.2);
 
 	int num = _sideNum;
-	radias /= PTM_RATIO;
+	auto radias =  _size/PTM_RATIO;
 
 	auto points = new b2Vec2[num];
 	
@@ -364,6 +364,16 @@ b2Body* PhysicsManager::getBodyAt(const Vec2& pos)
     return nullptr;
 }
 
+void PhysicsManager::deleteBodyAt(const Vec2& pos)
+{
+	b2Vec2 p = b2Vec2(pos.x/PTM_RATIO, pos.y/PTM_RATIO);
+	b2Body* body = getBodyAt(pos);
+	if(body)
+	{
+		_world->DestroyBody(body);
+	}
+}
+
 void PhysicsManager::addWheelJoint(const Vec2& pos)
 {
 	b2Vec2 p = b2Vec2(pos.x/PTM_RATIO, pos.y/PTM_RATIO);
@@ -383,8 +393,8 @@ void PhysicsManager::addWheelJoint(const Vec2& pos)
 			b2Vec2 axis(0.0f, 1.0f);
 
 			jd.Initialize(_car, _wheel, _wheel->GetPosition(), axis);
-			jd.motorSpeed = 0.0f;
-			jd.maxMotorTorque = 20.0f;
+			jd.motorSpeed = -10.0f;
+			jd.maxMotorTorque = 1000.0f;
 			jd.enableMotor = true;
 			jd.frequencyHz = m_hz;
 			jd.dampingRatio = m_zeta;
@@ -421,4 +431,33 @@ void PhysicsManager::togglePause()
 void PhysicsManager::setGravity(const Vec2& gravity)
 {
 	_world->SetGravity(b2Vec2(gravity.x, gravity.y));
+}
+
+float PhysicsManager::getPropertyByName(const std::string &name)
+{
+	if("Size" == name)
+	{
+		return _size;
+	}
+	log("No such property as: %s, return NULL", name.c_str());
+	return NULL;
+}
+
+Vec2 PhysicsManager::getRangeByName(const std::string &name)
+{
+	if("Size" == name)
+	{
+		return Vec2(1, 500);
+	}
+	log("No such property as: %s, range return NULL", name.c_str());
+	return NULL;
+}
+void PhysicsManager::setPropertyByName(const std::string& name, float fval)
+{
+	if("Size" == name)
+	{
+		_size =  fval;
+		return;
+	}
+	log("No such property as: %s, nothing set", name.c_str());
 }

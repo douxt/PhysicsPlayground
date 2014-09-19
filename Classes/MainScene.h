@@ -17,7 +17,7 @@ class MainScene : public cocos2d::Layer
 {
 public:
 
-	MainScene():_label(nullptr),_isDelete(false){}
+	MainScene():_label(nullptr),_isDelete(false),_preTime(0){}
 
 
     // there's no 'id' in cpp, so we recommend returning the class instance pointer
@@ -75,6 +75,7 @@ private:
 	Vector<DrawNode*> _marks;
 	DrawNode* _movingMark;
 	PopMenu* _popCurrent;
+	long _preTime;
 };
 
 #endif // __MAIN_SCENE_H__

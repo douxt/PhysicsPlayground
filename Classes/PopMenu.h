@@ -13,17 +13,21 @@ public:
 	CREATE_FUNC(PopMenu);
 	void selectedItemEvent(Ref *pSender, ListView::EventType type);
 	void addButton(const std::string& name, std::function<void()> callback = nullptr); 
+	void addSlider(const std::string& name);
+	void sliderEvent(Ref *pSender, Slider::EventType type);
 	CC_SYNTHESIZE(Vec2, _pos, Pos);
 	CC_SYNTHESIZE(float, _popTime, PopTime);
 	CC_SYNTHESIZE_READONLY(bool, _isEntering, IsEntering);
 	CC_SYNTHESIZE_READONLY(bool, _isEntered, IsEntered);
 	CC_SYNTHESIZE(int, _margin, Margin);
+	CC_SYNTHESIZE(int, _maxButtonShown, MaxButtonShown);
 	void popExit();
 	void popEnter();
 	void popToggle();
 	void setCallback(const std::string& name, std::function<void()> callback);
 	const Size& getListViewContentSize() const;
 	void reName(const std::string& oldName, const std::string& newName);
+	int getButtonCount();
 private:
 	ListView* _listView;
 	Layout* _layout;
