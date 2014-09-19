@@ -95,7 +95,7 @@ void PopMenu::addSlider(const std::string& name)
 {
 	float value = PhysicsManager::getInstance()->getPropertyByName(name);
 	Vec2 range = PhysicsManager::getInstance()->getRangeByName(name);
-	String* str = String::createWithFormat("%s:%d", name.c_str(), (int)value);
+	String* str = String::createWithFormat("%s:%.1f", name.c_str(), value);
 	auto valueLabel = Text::create(str->getCString(),"",24);
 //    auto valueLabel = Text::create("sth...","Arial",24);
 //    valueLabel->setAnchorPoint(Vec2(0.5f, -1));
@@ -139,7 +139,7 @@ void PopMenu::sliderEvent(Ref *pSender, Slider::EventType type)
 		Vec2 range = PhysicsManager::getInstance()->getRangeByName(name);
 		Text* text = dynamic_cast<Text*>(slider->getParent()->getChildren().at(0));
 		float value = (range.x + percent/100.0f*(range.y - range.x));
-		text->setString(String::createWithFormat("%s:%d", name.c_str(),(int)value)->getCString());
+		text->setString(String::createWithFormat("%s:%.1f", name.c_str(),value)->getCString());
 		PhysicsManager::getInstance()->setPropertyByName(name, value); 
 //        _valueLabel->setString(String::createWithFormat("Percent %d", percent)->getCString());
     }

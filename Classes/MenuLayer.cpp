@@ -30,6 +30,9 @@ void MenuLayer::addUI()
 	PopMenu* popSlider = PopMenu::create();
 
 	popSlider->addSlider("Size");
+	popSlider->addSlider("Density");
+	popSlider->addSlider("Friction");
+	popSlider->addSlider("Restitution");
 	popSlider->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popSlider);
 

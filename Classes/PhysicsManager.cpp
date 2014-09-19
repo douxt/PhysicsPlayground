@@ -64,6 +64,9 @@ bool PhysicsManager::init()
 	_groundBody = _world->CreateBody(&bodyDef);
 	_size = 50;
 	_isPaused = false;
+	_fixtureDef.density = 15;
+	_fixtureDef.friction = 0.4f;
+	_fixtureDef.restitution = 0.6f;
 //	addBlock(Point(500, 500),Size(100, 50));
 	addRegularPolygon(Point(500, 500));
 
@@ -124,11 +127,8 @@ void PhysicsManager::addRegularPolygon(Point pos)
 //	b2Vec2 points[] ={b2Vec2(-1,0), b2Vec2(1, 0), b2Vec2(0, sqrt(3))};
 	shape.Set(points, num);
 
-	b2FixtureDef fixtureDef;
+	b2FixtureDef fixtureDef(_fixtureDef);
 	fixtureDef.shape = &shape;
-	fixtureDef.density = 15;
-	fixtureDef.restitution = 0.8f;
-	fixtureDef.friction = 0.2f;
 	body->CreateFixture(&fixtureDef);
 
 	if(body){
@@ -153,11 +153,8 @@ void PhysicsManager::addCircle(Point pos, float radias)
 	b2CircleShape shape;
 	shape.m_radius = radias / PTM_RATIO;
 
-	b2FixtureDef fixtureDef;
+	b2FixtureDef fixtureDef(_fixtureDef);
 	fixtureDef.shape = &shape;
-	fixtureDef.density = 15;
-	fixtureDef.restitution = 0.8f;
-	fixtureDef.friction = 0.2f;
 	body->CreateFixture(&fixtureDef);
 
 	if(body){
@@ -199,11 +196,8 @@ void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)
 //	b2Vec2 points[] ={b2Vec2(-1,0), b2Vec2(1, 0), b2Vec2(0, sqrt(3))};
 	shape.Set(pts, num);
 
-	b2FixtureDef fixtureDef;
+	b2FixtureDef fixtureDef(_fixtureDef);
 	fixtureDef.shape = &shape;
-	fixtureDef.density = 15;
-	fixtureDef.restitution = 0.8f;
-	fixtureDef.friction = 0.2f;
 	body->CreateFixture(&fixtureDef);
 
 	if(body){
@@ -439,6 +433,18 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 	{
 		return _size;
 	}
+	if("Density" == name)
+	{
+		return _fixtureDef.density;
+	}
+	if("Friction" == name)
+	{
+		return _fixtureDef.friction;
+	}
+	if("Restitution" == name)
+	{
+		return _fixtureDef.restitution;
+	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
 }
@@ -448,6 +454,18 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 	if("Size" == name)
 	{
 		return Vec2(1, 500);
+	}
+	if("Density" == name)
+	{
+		return Vec2(0, 500);
+	}
+	if("Friction" == name)
+	{
+		return Vec2(0, 5);
+	}
+	if("Restitution" == name)
+	{
+		return Vec2(0, 2);
 	}
 	log("No such property as: %s, range return NULL", name.c_str());
 	return NULL;
@@ -459,5 +477,21 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 		_size =  fval;
 		return;
 	}
+	if("Density" == name)
+	{
+		_fixtureDef.density =  fval;
+		return;
+	}
+	if("Friction" == name)
+	{
+		_fixtureDef.friction =  fval;
+		return;
+	}
+	if("Restitution" == name)
+	{
+		_fixtureDef.restitution =  fval;
+		return;
+	}
+
 	log("No such property as: %s, nothing set", name.c_str());
 }

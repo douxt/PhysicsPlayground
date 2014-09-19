@@ -69,6 +69,7 @@ private:
 	bool _isPaused;
 	b2Body* _movingBody;
 	float _size;
+	b2FixtureDef _fixtureDef;
 };
 
 
