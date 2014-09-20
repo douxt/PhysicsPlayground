@@ -43,6 +43,7 @@ void MenuLayer::addUI()
 	popJointParameter->addSlider("FrequencyHz");
 	popJointParameter->addSlider("DampingRatio");
 	popJointParameter->addCheckBox("EnableMotor");
+	popJointParameter->addCheckBox("CollideConnected");
 	popJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popJointParameter);
 //	popJointParameter->popEnter();
@@ -69,12 +70,11 @@ void MenuLayer::addUI()
 		_popCurrent2 = nullptr;
 	});
 
-	int maxButtonShown = (int)((visibleSize.height - pop->getListViewContentSize().height - margin) / 
-						(pop->getListViewContentSize().height /pop->getButtonCount()));
+	int maxHeight = (int)(visibleSize.height - pop->getListViewContentSize().height - margin);
 
 
 	PopMenu* popRegular = PopMenu::create();
-	popRegular->setMaxButtonShown(maxButtonShown);
+	popRegular->setMaxHeight(maxHeight);
 	popRegular->addButton("Circle",[](){PhysicsManager::getInstance()->setSideNum(0);});
 	popRegular->addButton("Triangle",[](){PhysicsManager::getInstance()->setSideNum(3);});
 	popRegular->addButton("Square",[](){PhysicsManager::getInstance()->setSideNum(4);});
@@ -113,7 +113,7 @@ void MenuLayer::addUI()
 	popCustom->addButton("Confirm",[&](){_main->addCustomPolygon();});
 	popCustom->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
 	popCustom->setMargin(margin);
-	popCustom->setMaxButtonShown(maxButtonShown);
+	popRegular->setMaxHeight(maxHeight);
 	this->addChild(popCustom);
 
 	pop->setCallback("Add Custom",[&,popCustom,popAddParameter](){
@@ -131,16 +131,19 @@ void MenuLayer::addUI()
 			if(_popCurrent2&&_popCurrent2!=popAddParameter)
 				_popCurrent2->popExit();
 			_popCurrent2 = popAddParameter;
+
+			_main->clearMarks();
+			_main->setMaxMark(16);
 		}
 	});
 
 	PopMenu* popJoint = PopMenu::create();
 	popJoint->addButton("Wheel",[](){PhysicsManager::getInstance()->setJointType(b2JointType::e_wheelJoint);});
-	popJoint->addButton("Distance",[](){});
-	popJoint->addButton("Create",[](){});
+	popJoint->addButton("Distance",[](){PhysicsManager::getInstance()->setJointType(b2JointType::e_distanceJoint);});
+	popJoint->addButton("Create",[&](){_main->addJoint();});
 	popJoint->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
 	popJoint->setMargin(margin);
-	popJoint->setMaxButtonShown(maxButtonShown);
+	popRegular->setMaxHeight(maxHeight);
 	this->addChild(popJoint);
 
 	pop->setCallback("Add Joint",[&,popJoint,popJointParameter](){
@@ -157,6 +160,11 @@ void MenuLayer::addUI()
 			if(_popCurrent2&&_popCurrent2!=popJointParameter)
 				_popCurrent2->popExit();
 			_popCurrent2 = popJointParameter;
+
+			_main->clearMarks();
+			_main->setMaxMark(2);
+
+			PhysicsManager::getInstance()->setJointType(b2JointType::e_unknownJoint);
 		}
 	});
 

@@ -97,7 +97,27 @@ void MainScene::update(float dt)
 	PhysicsManager::getInstance()->update(dt);
 }
 
-
+bool MainScene::doMark(const Vec2& pos)
+{
+	_movingMark = getMark(pos);
+	if(_movingMark)
+	{
+		if(_isDelete)
+		{
+			_marks.eraseObject(_movingMark);
+			_movingMark->removeFromParent();
+			_movingMark=nullptr;
+			return false;
+		}
+		return true;
+	}
+	else
+	{
+		if(!_isDelete)
+			addMark(pos);
+		return false;
+	}
+}
 bool MainScene::onTouchBegan(Touch* touch, Event* event)
 {
 	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::ADD_TYPE)
@@ -105,24 +125,8 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::ADD_CUSTOM_TYPE)
 	{
 		auto pos = this->convertToNodeSpace(touch->getLocation());
-		_movingMark = getMark(pos);
-		if(_movingMark)
-		{
-			if(_isDelete)
-			{
-				_marks.eraseObject(_movingMark);
-				_movingMark->removeFromParent();
-				_movingMark=nullptr;
-				return false;
-			}
-			return true;
-		}
-		else
-		{
-			if(!_isDelete)
-				addMark(pos);
-			return false;
-		}
+		return doMark(pos);
+
 	}
 	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::MOVE_TYPE)
 	{
@@ -149,6 +153,10 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 		{
 			PhysicsManager::getInstance()->addWheelJoint(nodePosition);
 		}
+		if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_distanceJoint)
+		{
+			return doMark(nodePosition);
+		}
 		
 		return false;
 	}
@@ -172,6 +180,8 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 
 void MainScene::onTouchEnded(Touch* touch, Event* event)
 {
+	if(_movingMark)
+		_movingMark = nullptr;
 	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::ADD_TYPE)
 	{
 		auto pos = this->convertToNodeSpace(touch->getLocation());
@@ -226,15 +236,15 @@ void MainScene::onTouchMoved(Touch* touch, Event* event)
 		}
 
 	}
-	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::ADD_CUSTOM_TYPE)
-	{
+	//if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::ADD_CUSTOM_TYPE)
+	//{
 //		auto pos = this->convertToNodeSpace(touch->getLocation());
 		if(_movingMark)
 		{
 			auto curPos = _movingMark->getPosition();
 			_movingMark->setPosition(curPos + touch->getDelta());
 		}
-	}
+	//}
 
 }
 
@@ -246,6 +256,8 @@ void MainScene::onExit()
 
 void MainScene::addMark(const Vec2& pos)
 {
+	if(_marks.size() >= _maxMark)
+		return;
 	DrawNode* draw = DrawNode::create();
 	draw->drawDot(Vec2(0, 0), markRadias, Color4F(0, 1, 0, 1));
 	draw->drawDot(Vec2(0, 0), 5, Color4F(1, 1, 1, 1));
@@ -280,6 +292,12 @@ void MainScene::addCustomPolygon()
 	PhysicsManager::getInstance()->addCustomPolygon(points);
 }
 
+void MainScene::addJoint()
+{
+	if(_marks.size()<2)
+		return;
+	PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition());
+}
 void MainScene::clearMarks()
 {
 	for(auto mk: _marks)

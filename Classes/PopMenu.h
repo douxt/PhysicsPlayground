@@ -24,6 +24,8 @@ public:
 	CC_SYNTHESIZE_READONLY(bool, _isEntered, IsEntered);
 	CC_SYNTHESIZE(int, _margin, Margin);
 	CC_SYNTHESIZE(int, _maxButtonShown, MaxButtonShown);
+	CC_SYNTHESIZE(float, _maxHeight, MaxHeight);
+	CC_SYNTHESIZE(float, _maxWidth, MaxWidth);
 	void popExit();
 	void popEnter();
 	void popToggle();
@@ -31,6 +33,7 @@ public:
 	const Size& getListViewContentSize() const;
 	void reName(const std::string& oldName, const std::string& newName);
 	int getButtonCount();
+	void updateSize(const Size& size);
 private:
 	ListView* _listView;
 	Layout* _layout;

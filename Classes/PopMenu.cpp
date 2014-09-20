@@ -23,6 +23,8 @@ bool PopMenu::init()
 	_isEntering = false;
 	_margin = 0;
 	_maxButtonShown = 4;
+	_maxHeight = 240.0f;
+	_maxWidth = 1000;
 	this->setVisible(false);
 //	this->setContentSize(_listView->getContentSize());
 	return true;
@@ -79,14 +81,19 @@ void PopMenu::addButton(const std::string& name, std::function<void()> callback)
 	custom_item->setName(name);
     custom_item->setContentSize(custom_button->getContentSize());
     custom_button->setPosition(Vec2(custom_item->getContentSize().width / 2.0f, custom_item->getContentSize().height / 2.0f));
-    custom_item->addChild(custom_button);
-            
+    custom_item->addChild(custom_button);           
     _listView->addChild(custom_item);
 
-	if(_listView->getChildrenCount() <= _maxButtonShown)
+	updateSize(custom_item->getContentSize());
+}
+
+void PopMenu::updateSize(const Size& size)
+{
+	auto width = _listView->getContentSize().width>size.width?_listView->getContentSize().width:size.width;
+	auto height =_listView->getContentSize().height + size.height;
+	if(width <= _maxWidth && height <= _maxHeight)
 	{
-		_listView->setContentSize(Size(custom_button->getContentSize().width, 
-								_listView->getChildrenCount()*custom_button->getContentSize().height));
+		_listView->setContentSize(Size(width, height));
 		_layout->setContentSize(_listView->getContentSize());
 	}
 }
@@ -96,7 +103,7 @@ void PopMenu::addSlider(const std::string& name)
 	float value = PhysicsManager::getInstance()->getPropertyByName(name);
 	Vec2 range = PhysicsManager::getInstance()->getRangeByName(name);
 	String* str = String::createWithFormat("%s:%.1f", name.c_str(), value);
-	auto valueLabel = Text::create(str->getCString(),"",24);
+	auto valueLabel = Text::create(str->getCString(),"",20);
 //    auto valueLabel = Text::create("sth...","Arial",24);
 //    valueLabel->setAnchorPoint(Vec2(0.5f, -1));
 
@@ -122,12 +129,7 @@ void PopMenu::addSlider(const std::string& name)
 
     _listView->addChild(custom_item);
 
-	if(_listView->getChildrenCount() <= _maxButtonShown)
-	{
-		_listView->setContentSize(Size(custom_item->getContentSize().width, 
-								_listView->getChildrenCount()*custom_item->getContentSize().height));
-		_layout->setContentSize(_listView->getContentSize());
-	}
+	updateSize(custom_item->getContentSize());
 }
 
 void PopMenu::sliderEvent(Ref *pSender, Slider::EventType type)
@@ -176,6 +178,7 @@ void PopMenu::addCheckBox(const std::string& name)
 
 	_listView->addChild(custom_item);
 
+	updateSize(custom_item->getContentSize());
 }
 
 void PopMenu::selectedEvent(Ref* pSender,CheckBox::EventType type)

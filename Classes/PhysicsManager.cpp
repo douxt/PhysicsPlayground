@@ -4,7 +4,8 @@ PhysicsManager* PhysicsManager::_physicsManager = nullptr;
 
 PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0),
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
-_groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),_jointType(b2JointType::e_unknownJoint)
+_groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),
+_jointType(b2JointType::e_unknownJoint),_collideConnected(false)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -68,11 +69,11 @@ bool PhysicsManager::init()
 	_fixtureDef.friction = 0.4f;
 	_fixtureDef.restitution = 0.6f;
 
-	_wheelJointDef.motorSpeed = 10.0f;
-	_wheelJointDef.maxMotorTorque = 800.0f;
+	_motorSpeed = 10.0f;
+	_maxMotorTorque = 800.0f;
 //	_wheelJointDef.enableMotor = true;
-	_wheelJointDef.frequencyHz = 4.0f;
-	_wheelJointDef.dampingRatio = 0.7f;
+	_frequencyHz = 4.0f;
+	_dampingRatio = 0.7f;
 //	addBlock(Point(500, 500),Size(100, 50));
 	addRegularPolygon(Point(500, 500));
 
@@ -389,15 +390,37 @@ void PhysicsManager::addWheelJoint(const Vec2& pos)
 			auto m_hz = 4.0f;
 			auto m_zeta = 0.7f;
 			_wheel = body;
-			b2WheelJointDef jd(_wheelJointDef);
+			b2WheelJointDef jd;
 			b2Vec2 axis(0.0f, 1.0f);
-
 			jd.Initialize(_car, _wheel, _wheel->GetPosition(), axis);
 			jd.enableMotor = _isMotorEnabled;
+			jd.motorSpeed = _motorSpeed;
+			jd.maxMotorTorque = _maxMotorTorque;
+			jd.frequencyHz = _frequencyHz;
+			jd.dampingRatio = _dampingRatio;
+			jd.collideConnected = _collideConnected;
 			_world->CreateJoint(&jd);
 			_car = nullptr;
 			_wheel = nullptr;
 		}
+	}
+}
+
+void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2)
+{
+	auto body1 = getBodyAt(pos1);
+	auto body2 = getBodyAt(pos2);
+	if(body1 && body2)
+	{
+		auto p1 = b2Vec2(pos1.x/PTM_RATIO, pos1.y/PTM_RATIO);
+		auto p2 = b2Vec2(pos2.x/PTM_RATIO, pos2.y/PTM_RATIO);
+
+		b2DistanceJointDef djd;
+		djd.dampingRatio = _dampingRatio;
+		djd.frequencyHz = _frequencyHz;
+		djd.collideConnected = _collideConnected;
+		djd.Initialize(body1, body2, p1, p2);
+		_world->CreateJoint(&djd);
 	}
 }
 
@@ -434,6 +457,10 @@ bool PhysicsManager::getPropertyByNameBool(const std::string &name)
 	{
 		return _isMotorEnabled;
 	}
+	if("CollideConnected" == name)
+	{
+		return _collideConnected;
+	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;	
 }
@@ -443,6 +470,11 @@ void PhysicsManager::setPropertyByNameBool(const std::string &name, bool bval)
 	if("EnableMotor" == name)
 	{
 		_isMotorEnabled = bval;
+	}
+
+	if("CollideConnected" == name)
+	{
+		_collideConnected = bval;
 	}
 	log("No such property as: %s, nothing set", name.c_str());
 }
@@ -467,31 +499,27 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 	}
 	if("MotorSpeed" == name)
 	{
-		if(_jointType == b2JointType::e_wheelJoint)
-		{
-			return _wheelJointDef.motorSpeed;
-		}
+
+			return _motorSpeed;
+
 	}
 	if("MaxMotorTorque" == name)
 	{
-		if(_jointType == b2JointType::e_wheelJoint)
-		{
-			return _wheelJointDef.maxMotorTorque;
-		}
+
+			return _maxMotorTorque;
+
 	}
 	if("FrequencyHz" == name)
 	{
-		if(_jointType == b2JointType::e_wheelJoint)
-		{
-			return _wheelJointDef.frequencyHz;
-		}
+
+			return _frequencyHz;
+
 	}
 	if("DampingRatio" == name)
 	{
-		if(_jointType == b2JointType::e_wheelJoint)
-		{
-			return _wheelJointDef.dampingRatio;
-		}
+
+			return _dampingRatio;
+
 	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
@@ -560,12 +588,27 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 
 	if("MotorSpeed" == name)
 	{
-		if(_jointType == b2JointType::e_wheelJoint)
-		{
-			_wheelJointDef.motorSpeed = fval;
+			_motorSpeed = fval;
 			return;
-		}
 	}
 
+	if("MaxMotorTorque" == name)
+	{
+
+			_maxMotorTorque = fval;
+
+	}
+	if("FrequencyHz" == name)
+	{
+
+			_frequencyHz = fval;
+
+	}
+	if("DampingRatio" == name)
+	{
+
+			_dampingRatio = fval;
+
+	}
 	log("No such property as: %s, nothing set", name.c_str());
 }

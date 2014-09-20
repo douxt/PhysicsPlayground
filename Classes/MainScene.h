@@ -17,7 +17,7 @@ class MainScene : public cocos2d::Layer
 {
 public:
 
-	MainScene():_label(nullptr),_isDelete(false),_preTime(0){}
+	MainScene():_label(nullptr),_isDelete(false),_preTime(0),_maxMark(16),_movingMark(nullptr){}
 
 
     // there's no 'id' in cpp, so we recommend returning the class instance pointer
@@ -66,9 +66,13 @@ public:
 
 	void clearMarks();
 
+	bool doMark(const Vec2& pos);
+
+	void addJoint();
+
 public:
 	CC_SYNTHESIZE(bool, _isDelete, IsDelete);
-
+	CC_SYNTHESIZE(int, _maxMark, MaxMark);
 private:
 	CustomCommand _customCmd;
 	LabelTTF* _label;
