@@ -19,6 +19,7 @@ void MenuLayer::addUI()
 	Size visibleSize = Director::getInstance()->getVisibleSize();
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
 	_popCurrent = nullptr;
+	_popCurrent2 = nullptr;
 	int margin = 10;
 	_label = LabelTTF::create("Hello World", "fonts/Marker Felt.ttf", 24);
     _label->setString("   Mode:Move");
@@ -27,14 +28,24 @@ void MenuLayer::addUI()
 //	_label->setVisible(false);
 //	addUI();
 
-	PopMenu* popSlider = PopMenu::create();
+	PopMenu* popAddParameter = PopMenu::create();
 
-	popSlider->addSlider("Size");
-	popSlider->addSlider("Density");
-	popSlider->addSlider("Friction");
-	popSlider->addSlider("Restitution");
-	popSlider->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
-	this->addChild(popSlider);
+	popAddParameter->addSlider("Size");
+	popAddParameter->addSlider("Density");
+	popAddParameter->addSlider("Friction");
+	popAddParameter->addSlider("Restitution");
+	popAddParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popAddParameter);
+
+	PopMenu* popJointParameter = PopMenu::create();
+	popJointParameter->addSlider("MotorSpeed");
+	popJointParameter->addSlider("MaxMotorTorque");
+	popJointParameter->addSlider("FrequencyHz");
+	popJointParameter->addSlider("DampingRatio");
+	popJointParameter->addCheckBox("EnableMotor");
+	popJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popJointParameter);
+//	popJointParameter->popEnter();
 
 	auto pop = PopMenu::create();
 	pop->addButton("Move",[](){log("Test1 Touched!");});
@@ -47,12 +58,15 @@ void MenuLayer::addUI()
 	pop->setLocalZOrder(100);
 	pop->popEnter();
 
-	pop->setCallback("Move",[&](){
+	pop->setCallback("Move",[&,popAddParameter](){
 		PhysicsManager::getInstance()->setTouchType(PhysicsManager::MOVE_TYPE);
 		_label->setString("Mode:Move");
 		if(_popCurrent)
 			_popCurrent->popExit();
 		_popCurrent = nullptr;
+		if(_popCurrent2)
+			_popCurrent2->popExit();
+		_popCurrent2 = nullptr;
 	});
 
 	int maxButtonShown = (int)((visibleSize.height - pop->getListViewContentSize().height - margin) / 
@@ -75,7 +89,7 @@ void MenuLayer::addUI()
 
 	this->addChild(popRegular);
 //	popRegular->setLocalZOrder(100);
-	pop->setCallback("Add Regular",[&,popRegular,popSlider](){
+	pop->setCallback("Add Regular",[&,popRegular,popAddParameter](){
 		if(PhysicsManager::getInstance()->getTouchType()!=PhysicsManager::ADD_TYPE)
 		{
 			PhysicsManager::getInstance()->setTouchType(PhysicsManager::ADD_TYPE);
@@ -84,7 +98,11 @@ void MenuLayer::addUI()
 			if(_popCurrent)
 				_popCurrent->popExit();
 			_popCurrent = popRegular;
-			popSlider->popEnter();
+
+			popAddParameter->popEnter();
+			if(_popCurrent2&&_popCurrent2!=popAddParameter)
+				_popCurrent2->popExit();
+			_popCurrent2 = popAddParameter;
 		}
 	});
 
@@ -98,7 +116,7 @@ void MenuLayer::addUI()
 	popCustom->setMaxButtonShown(maxButtonShown);
 	this->addChild(popCustom);
 
-	pop->setCallback("Add Custom",[&,popCustom](){
+	pop->setCallback("Add Custom",[&,popCustom,popAddParameter](){
 		if(PhysicsManager::getInstance()->getTouchType()!=PhysicsManager::ADD_CUSTOM_TYPE)
 		{
 			PhysicsManager::getInstance()->setTouchType(PhysicsManager::ADD_CUSTOM_TYPE);
@@ -108,19 +126,24 @@ void MenuLayer::addUI()
 			if(_popCurrent)
 				_popCurrent->popExit();
 			_popCurrent = popCustom;
+
+			popAddParameter->popEnter();
+			if(_popCurrent2&&_popCurrent2!=popAddParameter)
+				_popCurrent2->popExit();
+			_popCurrent2 = popAddParameter;
 		}
 	});
 
 	PopMenu* popJoint = PopMenu::create();
-	popJoint->addButton("Mark",[](){});
+	popJoint->addButton("Wheel",[](){PhysicsManager::getInstance()->setJointType(b2JointType::e_wheelJoint);});
+	popJoint->addButton("Distance",[](){});
 	popJoint->addButton("Create",[](){});
-	popJoint->addButton("Add Mark",[](){});
 	popJoint->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
 	popJoint->setMargin(margin);
 	popJoint->setMaxButtonShown(maxButtonShown);
 	this->addChild(popJoint);
 
-	pop->setCallback("Add Joint",[&,popJoint](){
+	pop->setCallback("Add Joint",[&,popJoint,popJointParameter](){
 		if(PhysicsManager::getInstance()->getTouchType()!=PhysicsManager::ADD_JOINT_TYPE)
 		{
 			PhysicsManager::getInstance()->setTouchType(PhysicsManager::ADD_JOINT_TYPE);
@@ -129,6 +152,11 @@ void MenuLayer::addUI()
 			if(_popCurrent)
 				_popCurrent->popExit();
 			_popCurrent = popJoint;
+
+			popJointParameter->popEnter();
+			if(_popCurrent2&&_popCurrent2!=popJointParameter)
+				_popCurrent2->popExit();
+			_popCurrent2 = popJointParameter;
 		}
 	});
 
@@ -162,21 +190,6 @@ void MenuLayer::addUI()
 	});
 
 	popPause->popEnter();
-
-    //_valueLabel = Text::create("Move the slider thumb","Move the slider thumb",24);
-    //_valueLabel->setAnchorPoint(Vec2(0.5f, -1));
-    //_valueLabel->setPosition(Vec2(origin.x + visibleSize.width/2, origin.y + visibleSize.height/2));
-    //this->addChild(_valueLabel);
-
-    //// Create the slider
-    //Slider* slider = Slider::create();
-    //slider->loadBarTexture("cocosui/sliderTrack.png");
-    //slider->loadSlidBallTextures("cocosui/sliderThumb.png", "cocosui/sliderThumb.png", "");
-    //slider->loadProgressBarTexture("cocosui/sliderProgress.png");
-    //slider->setPosition(Vec2(origin.x + visibleSize.width/2, origin.y + visibleSize.height/2));
-    //slider->addEventListener(CC_CALLBACK_2(MenuLayer::sliderEvent, this));
-    //this->addChild(slider);
-
 
 }
 

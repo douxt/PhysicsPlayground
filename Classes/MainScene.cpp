@@ -145,7 +145,11 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 	{
 		auto touchLocation = touch->getLocation();    
 		auto nodePosition = convertToNodeSpace( touchLocation );
-		PhysicsManager::getInstance()->addWheelJoint(nodePosition);
+		if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_wheelJoint)
+		{
+			PhysicsManager::getInstance()->addWheelJoint(nodePosition);
+		}
+		
 		return false;
 	}
 

@@ -4,7 +4,7 @@ PhysicsManager* PhysicsManager::_physicsManager = nullptr;
 
 PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0),
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
-_groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr)
+_groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),_jointType(b2JointType::e_unknownJoint)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -50,7 +50,7 @@ bool PhysicsManager::init()
 //	std::vector<int> vi = {1,2,3};
 	_debugDraw = new GLESDebugDraw(PTM_RATIO);
 	_world->SetDebugDraw(_debugDraw);
-
+	_isMotorEnabled = true;
 	uint32 flags = 0;
 	flags += b2Draw::e_shapeBit
 			+b2Draw::e_jointBit
@@ -67,6 +67,12 @@ bool PhysicsManager::init()
 	_fixtureDef.density = 15;
 	_fixtureDef.friction = 0.4f;
 	_fixtureDef.restitution = 0.6f;
+
+	_wheelJointDef.motorSpeed = 10.0f;
+	_wheelJointDef.maxMotorTorque = 800.0f;
+//	_wheelJointDef.enableMotor = true;
+	_wheelJointDef.frequencyHz = 4.0f;
+	_wheelJointDef.dampingRatio = 0.7f;
 //	addBlock(Point(500, 500),Size(100, 50));
 	addRegularPolygon(Point(500, 500));
 
@@ -378,20 +384,16 @@ void PhysicsManager::addWheelJoint(const Vec2& pos)
 		{
 			_car = body;
 		}
-		else
+		else if(_car != body)
 		{
 			auto m_hz = 4.0f;
 			auto m_zeta = 0.7f;
 			_wheel = body;
-			b2WheelJointDef jd;
+			b2WheelJointDef jd(_wheelJointDef);
 			b2Vec2 axis(0.0f, 1.0f);
 
 			jd.Initialize(_car, _wheel, _wheel->GetPosition(), axis);
-			jd.motorSpeed = -10.0f;
-			jd.maxMotorTorque = 1000.0f;
-			jd.enableMotor = true;
-			jd.frequencyHz = m_hz;
-			jd.dampingRatio = m_zeta;
+			jd.enableMotor = _isMotorEnabled;
 			_world->CreateJoint(&jd);
 			_car = nullptr;
 			_wheel = nullptr;
@@ -426,6 +428,24 @@ void PhysicsManager::setGravity(const Vec2& gravity)
 {
 	_world->SetGravity(b2Vec2(gravity.x, gravity.y));
 }
+bool PhysicsManager::getPropertyByNameBool(const std::string &name)
+{
+	if("EnableMotor" == name)
+	{
+		return _isMotorEnabled;
+	}
+	log("No such property as: %s, return NULL", name.c_str());
+	return NULL;	
+}
+
+void PhysicsManager::setPropertyByNameBool(const std::string &name, bool bval)
+{
+	if("EnableMotor" == name)
+	{
+		_isMotorEnabled = bval;
+	}
+	log("No such property as: %s, nothing set", name.c_str());
+}
 
 float PhysicsManager::getPropertyByName(const std::string &name)
 {
@@ -444,6 +464,34 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 	if("Restitution" == name)
 	{
 		return _fixtureDef.restitution;
+	}
+	if("MotorSpeed" == name)
+	{
+		if(_jointType == b2JointType::e_wheelJoint)
+		{
+			return _wheelJointDef.motorSpeed;
+		}
+	}
+	if("MaxMotorTorque" == name)
+	{
+		if(_jointType == b2JointType::e_wheelJoint)
+		{
+			return _wheelJointDef.maxMotorTorque;
+		}
+	}
+	if("FrequencyHz" == name)
+	{
+		if(_jointType == b2JointType::e_wheelJoint)
+		{
+			return _wheelJointDef.frequencyHz;
+		}
+	}
+	if("DampingRatio" == name)
+	{
+		if(_jointType == b2JointType::e_wheelJoint)
+		{
+			return _wheelJointDef.dampingRatio;
+		}
 	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
@@ -466,6 +514,23 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 	if("Restitution" == name)
 	{
 		return Vec2(0, 2);
+	}
+	if("MotorSpeed" == name)
+	{
+		return Vec2(-100, 100);
+	}
+
+	if("MaxMotorTorque" == name)
+	{
+			return Vec2(0, 1000);
+	}
+	if("FrequencyHz" == name)
+	{
+			return Vec2(0, 30);
+	}
+	if("DampingRatio" == name)
+	{
+			return Vec2(0, 5);
 	}
 	log("No such property as: %s, range return NULL", name.c_str());
 	return NULL;
@@ -491,6 +556,15 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 	{
 		_fixtureDef.restitution =  fval;
 		return;
+	}
+
+	if("MotorSpeed" == name)
+	{
+		if(_jointType == b2JointType::e_wheelJoint)
+		{
+			_wheelJointDef.motorSpeed = fval;
+			return;
+		}
 	}
 
 	log("No such property as: %s, nothing set", name.c_str());

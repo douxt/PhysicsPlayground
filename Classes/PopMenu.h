@@ -12,8 +12,11 @@ public:
 	bool init();
 	CREATE_FUNC(PopMenu);
 	void selectedItemEvent(Ref *pSender, ListView::EventType type);
+	void selectedEvent(Ref* pSender,CheckBox::EventType type);
+
 	void addButton(const std::string& name, std::function<void()> callback = nullptr); 
 	void addSlider(const std::string& name);
+	void addCheckBox(const std::string& name);
 	void sliderEvent(Ref *pSender, Slider::EventType type);
 	CC_SYNTHESIZE(Vec2, _pos, Pos);
 	CC_SYNTHESIZE(float, _popTime, PopTime);

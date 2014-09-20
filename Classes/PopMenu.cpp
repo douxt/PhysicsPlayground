@@ -107,7 +107,8 @@ void PopMenu::addSlider(const std::string& name)
     slider->loadSlidBallTextures("cocosui/sliderThumb.png", "cocosui/sliderThumb.png", "");
     slider->loadProgressBarTexture("cocosui/sliderProgress.png");
     slider->setPosition(Vec2(slider->getLayoutSize()/2) + Vec2(0, 0));
-	slider->setPercent((int)((value - range.x)/(range.y - range.x)));
+	float percent = 100*(value - range.x)/(range.y - range.x);
+	slider->setPercent((int)(percent));
     slider->addEventListener(CC_CALLBACK_2(PopMenu::sliderEvent, this));
 	valueLabel->setPosition(Vec2(slider->getLayoutSize().width/2, valueLabel->getContentSize().height/2 + slider->getLayoutSize().height));
 	Layout *custom_item = Layout::create();
@@ -143,6 +144,60 @@ void PopMenu::sliderEvent(Ref *pSender, Slider::EventType type)
 		PhysicsManager::getInstance()->setPropertyByName(name, value); 
 //        _valueLabel->setString(String::createWithFormat("Percent %d", percent)->getCString());
     }
+}
+
+void PopMenu::addCheckBox(const std::string& name)
+{      
+	bool bval = PhysicsManager::getInstance()->getPropertyByNameBool(name);
+    // Add the alert
+    Text* alert = Text::create(name,"",20 );
+//    alert->setColor(Color3B(159, 168, 176));
+    alert->setPosition(Vec2(alert->getContentSize().width / 2.0f, alert->getContentSize().height / 2.0f));
+           
+        
+    // Create the checkbox
+    CheckBox* checkBox = CheckBox::create("cocosui/check_box_normal.png",
+                                            "cocosui/check_box_normal_press.png",
+                                            "cocosui/check_box_active.png",
+                                            "cocosui/check_box_normal_disable.png",
+                                            "cocosui/check_box_active_disable.png");
+	checkBox->setName(name);
+    checkBox->setPosition(Vec2(alert->getContentSize().width + checkBox->getContentSize().width / 2.0f, checkBox->getContentSize().height / 2.0f));
+    checkBox->setSelectedState(bval);   
+    checkBox->addEventListener(CC_CALLBACK_2(PopMenu::selectedEvent, this));
+    
+
+	Layout *custom_item = Layout::create();
+	float height = alert->getContentSize().height > checkBox->getLayoutSize().height?alert->getContentSize().height:checkBox->getLayoutSize().height;
+	float width = alert->getContentSize().width + checkBox->getLayoutSize().width;
+    custom_item->setContentSize(Size(width, height));
+	custom_item->addChild(alert);
+	custom_item->addChild(checkBox);
+
+	_listView->addChild(custom_item);
+
+}
+
+void PopMenu::selectedEvent(Ref* pSender,CheckBox::EventType type)
+{
+	std::string name = "";
+	CheckBox* checkBox = nullptr;
+    switch (type)
+    {
+        case CheckBox::EventType::SELECTED:
+			checkBox = dynamic_cast<CheckBox*>(pSender);
+			name = checkBox->getName();
+			PhysicsManager::getInstance()->setPropertyByNameBool(name, true);
+            break;
+            
+        case CheckBox::EventType::UNSELECTED:
+			checkBox = dynamic_cast<CheckBox*>(pSender);
+			name = checkBox->getName();
+			PhysicsManager::getInstance()->setPropertyByNameBool(name, false);
+        default:
+            break;
+    }
+    
 }
 
 void PopMenu::popEnter()

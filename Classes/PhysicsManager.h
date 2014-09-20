@@ -20,6 +20,7 @@ public:
 		SET_GRAVITY_TYPE,
 		DELETE_TYPE
 	};
+
 	static PhysicsManager* getInstance();
 	static void purgeInstance();
 	bool init();
@@ -43,11 +44,13 @@ public:
 	void togglePause();
 	void setGravity(const Vec2& gravity);
 	float getPropertyByName(const std::string& name);
+	bool getPropertyByNameBool(const std::string& name);
 	Vec2 getRangeByName(const std::string& name);
 	void setPropertyByName(const std::string& name, float fval);
-
+	void setPropertyByNameBool(const std::string& name, bool bval);
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
+	CC_SYNTHESIZE(b2JointType, _jointType, JointType);
 	CC_SYNTHESIZE(b2World*, _world, World);
 	CC_SYNTHESIZE(int, _sideNum, SideNum);
 
@@ -70,6 +73,8 @@ private:
 	b2Body* _movingBody;
 	float _size;
 	b2FixtureDef _fixtureDef;
+	b2WheelJointDef _wheelJointDef;
+	bool _isMotorEnabled;
 };
 
 

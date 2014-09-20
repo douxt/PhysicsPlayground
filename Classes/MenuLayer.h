@@ -18,6 +18,7 @@ public:
 	void sliderEvent(Ref *pSender, Slider::EventType type);
 private:
 	PopMenu* _popCurrent;
+	PopMenu* _popCurrent2;
 	LabelTTF* _label;
 	MainScene* _main;
 	Text* _valueLabel;
