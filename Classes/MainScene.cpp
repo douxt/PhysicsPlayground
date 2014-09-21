@@ -151,9 +151,13 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 		auto nodePosition = convertToNodeSpace( touchLocation );
 		if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_wheelJoint)
 		{
-			PhysicsManager::getInstance()->addWheelJoint(nodePosition);
+			return doMark(nodePosition);
 		}
 		if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_distanceJoint)
+		{
+			return doMark(nodePosition);
+		}
+		if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_revoluteJoint)
 		{
 			return doMark(nodePosition);
 		}
@@ -258,16 +262,17 @@ void MainScene::addMark(const Vec2& pos)
 {
 	if(_marks.size() >= _maxMark)
 		return;
-	DrawNode* draw = DrawNode::create();
+	MarkNode* draw = MarkNode::create();
 	draw->drawDot(Vec2(0, 0), markRadias, Color4F(0, 1, 0, 1));
 	draw->drawDot(Vec2(0, 0), 5, Color4F(1, 1, 1, 1));
 	draw->setPosition(pos);
-	this->addChild(draw, 1);
+	this->addChild(draw);
+	draw->setNum(_marks.size());
 	_marks.pushBack(draw);
 
 }
 
-DrawNode* MainScene::getMark(const Vec2& pos)
+MarkNode* MainScene::getMark(const Vec2& pos)
 {
 	ssize_t size = _marks.size();
 	for(ssize_t i=0; i<size; i++)
@@ -294,9 +299,20 @@ void MainScene::addCustomPolygon()
 
 void MainScene::addJoint()
 {
-	if(_marks.size()<2)
-		return;
-	PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition());
+	auto jointType = PhysicsManager::getInstance()->getJointType();
+	if(jointType == b2JointType::e_distanceJoint || jointType ==b2JointType::e_wheelJoint)
+	{
+		if(_marks.size()<2)
+			return;
+		PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition());
+	}
+	if(jointType == b2JointType::e_revoluteJoint)
+	{
+		if(_marks.size()<3)
+			return;
+		PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition(),_marks.at(2)->getPosition());
+	}
+
 }
 void MainScene::clearMarks()
 {

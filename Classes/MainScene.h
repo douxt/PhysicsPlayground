@@ -8,6 +8,7 @@
 #include "ui/CocosGUI.h"
 #include "PopMenu.h"
 #include "MenuLayer.h"
+#include "MarkNode.h"
 USING_NS_CC;
 USING_NS_CC_EXT;
 using namespace cocos2d::ui;
@@ -60,7 +61,7 @@ public:
 
 	void addMark(const Vec2& pos);
 
-	DrawNode* getMark(const Vec2& pos);
+	MarkNode* getMark(const Vec2& pos);
 
 	void addCustomPolygon();
 
@@ -76,8 +77,8 @@ public:
 private:
 	CustomCommand _customCmd;
 	LabelTTF* _label;
-	Vector<DrawNode*> _marks;
-	DrawNode* _movingMark;
+	Vector<MarkNode*> _marks;
+	MarkNode* _movingMark;
 	PopMenu* _popCurrent;
 	long _preTime;
 };

@@ -34,7 +34,7 @@ public:
 
 	void addCustomPolygon(const std::vector<Vec2>& points);
 	void addCircle(Point pos, float radias);
-	void addJoint(const Vec2& pos1, const Vec2& pos2);
+	void addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3 = Vec2());
 
 	b2Body* getBodyAt(const Vec2& pos);
 	void deleteBodyAt(const Vec2& pos);
@@ -75,12 +75,15 @@ private:
 	float _size;
 	b2FixtureDef _fixtureDef;
 	b2WheelJointDef _wheelJointDef;
-	bool _isMotorEnabled;
+	bool _enableMotor;
 	bool _collideConnected;
 	float _motorSpeed;
 	float _maxMotorTorque;
 	float _frequencyHz;
 	float _dampingRatio;
+	float _lowerAngle;
+	float _upperAngle;
+	bool _enableLimit;
 
 };
 

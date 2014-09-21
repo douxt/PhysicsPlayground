@@ -51,7 +51,7 @@ bool PhysicsManager::init()
 //	std::vector<int> vi = {1,2,3};
 	_debugDraw = new GLESDebugDraw(PTM_RATIO);
 	_world->SetDebugDraw(_debugDraw);
-	_isMotorEnabled = true;
+	_enableMotor = true;
 	uint32 flags = 0;
 	flags += b2Draw::e_shapeBit
 			+b2Draw::e_jointBit
@@ -74,6 +74,10 @@ bool PhysicsManager::init()
 //	_wheelJointDef.enableMotor = true;
 	_frequencyHz = 4.0f;
 	_dampingRatio = 0.7f;
+
+	_lowerAngle = -45;
+	_upperAngle = 45;
+	_enableLimit = true;
 //	addBlock(Point(500, 500),Size(100, 50));
 	addRegularPolygon(Point(500, 500));
 
@@ -393,7 +397,7 @@ void PhysicsManager::addWheelJoint(const Vec2& pos)
 			b2WheelJointDef jd;
 			b2Vec2 axis(0.0f, 1.0f);
 			jd.Initialize(_car, _wheel, _wheel->GetPosition(), axis);
-			jd.enableMotor = _isMotorEnabled;
+			jd.enableMotor = _enableMotor;
 			jd.motorSpeed = _motorSpeed;
 			jd.maxMotorTorque = _maxMotorTorque;
 			jd.frequencyHz = _frequencyHz;
@@ -406,7 +410,7 @@ void PhysicsManager::addWheelJoint(const Vec2& pos)
 	}
 }
 
-void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2)
+void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3)
 {
 	auto body1 = getBodyAt(pos1);
 	auto body2 = getBodyAt(pos2);
@@ -414,13 +418,44 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2)
 	{
 		auto p1 = b2Vec2(pos1.x/PTM_RATIO, pos1.y/PTM_RATIO);
 		auto p2 = b2Vec2(pos2.x/PTM_RATIO, pos2.y/PTM_RATIO);
+		auto p3 = b2Vec2(pos3.x/PTM_RATIO, pos3.y/PTM_RATIO);
 
-		b2DistanceJointDef djd;
-		djd.dampingRatio = _dampingRatio;
-		djd.frequencyHz = _frequencyHz;
-		djd.collideConnected = _collideConnected;
-		djd.Initialize(body1, body2, p1, p2);
-		_world->CreateJoint(&djd);
+		if(_jointType == b2JointType::e_wheelJoint)
+		{
+			b2WheelJointDef wjd;
+			b2Vec2 axis(0.0f, 1.0f);
+			wjd.Initialize(body1, body2, body2->GetPosition(), axis);
+			wjd.enableMotor = _enableMotor;
+			wjd.motorSpeed = _motorSpeed;
+			wjd.maxMotorTorque = _maxMotorTorque;
+			wjd.frequencyHz = _frequencyHz;
+			wjd.dampingRatio = _dampingRatio;
+			wjd.collideConnected = _collideConnected;
+			_world->CreateJoint(&wjd);
+		}
+		if(_jointType == b2JointType::e_distanceJoint)
+		{
+			b2DistanceJointDef djd;
+			djd.dampingRatio = _dampingRatio;
+			djd.frequencyHz = _frequencyHz;
+			djd.collideConnected = _collideConnected;
+			djd.Initialize(body1, body2, p1, p2);
+			_world->CreateJoint(&djd);
+		}
+		if(_jointType == b2JointType::e_revoluteJoint)
+		{
+			b2RevoluteJointDef rjd;
+			rjd.Initialize(body1, body2, p3);
+			rjd.upperAngle = _upperAngle/180*b2_pi;
+			rjd.lowerAngle = _lowerAngle/180*b2_pi;
+			rjd.enableLimit = _enableLimit;
+			rjd.motorSpeed = _motorSpeed;
+			rjd.maxMotorTorque = _maxMotorTorque;
+			rjd.enableMotor = _enableMotor;
+			rjd.collideConnected = _collideConnected;
+			_world->CreateJoint(&rjd);
+		}
+
 	}
 }
 
@@ -455,11 +490,15 @@ bool PhysicsManager::getPropertyByNameBool(const std::string &name)
 {
 	if("EnableMotor" == name)
 	{
-		return _isMotorEnabled;
+		return _enableMotor;
 	}
 	if("CollideConnected" == name)
 	{
 		return _collideConnected;
+	}
+	if("EnableLimit" == name)
+	{
+		return _enableLimit;
 	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;	
@@ -469,12 +508,16 @@ void PhysicsManager::setPropertyByNameBool(const std::string &name, bool bval)
 {
 	if("EnableMotor" == name)
 	{
-		_isMotorEnabled = bval;
+		_enableMotor = bval;
 	}
 
 	if("CollideConnected" == name)
 	{
 		_collideConnected = bval;
+	}
+	if("EnableLimit" == name)
+	{
+		_enableLimit = bval;
 	}
 	log("No such property as: %s, nothing set", name.c_str());
 }
@@ -521,6 +564,19 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 			return _dampingRatio;
 
 	}
+	if("LowerAngle" == name)
+	{
+
+			return _lowerAngle;
+
+	}
+	if("UpperAngle" == name)
+	{
+
+			return _upperAngle;
+
+	}
+
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
 }
@@ -559,6 +615,18 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 	if("DampingRatio" == name)
 	{
 			return Vec2(0, 5);
+	}
+	if("LowerAngle" == name)
+	{
+
+			return Vec2(-180, 180);
+
+	}
+	if("UpperAngle" == name)
+	{
+
+			return Vec2(-180, 180);
+
 	}
 	log("No such property as: %s, range return NULL", name.c_str());
 	return NULL;
@@ -608,6 +676,18 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 	{
 
 			_dampingRatio = fval;
+
+	}
+	if("LowerAngle" == name)
+	{
+
+			_lowerAngle = fval;
+
+	}
+	if("UpperAngle" == name)
+	{
+
+			_upperAngle = fval;
 
 	}
 	log("No such property as: %s, nothing set", name.c_str());

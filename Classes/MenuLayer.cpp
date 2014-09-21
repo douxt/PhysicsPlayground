@@ -37,16 +37,36 @@ void MenuLayer::addUI()
 	popAddParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popAddParameter);
 
-	PopMenu* popJointParameter = PopMenu::create();
-	popJointParameter->addSlider("MotorSpeed");
-	popJointParameter->addSlider("MaxMotorTorque");
-	popJointParameter->addSlider("FrequencyHz");
-	popJointParameter->addSlider("DampingRatio");
-	popJointParameter->addCheckBox("EnableMotor");
-	popJointParameter->addCheckBox("CollideConnected");
-	popJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
-	this->addChild(popJointParameter);
-//	popJointParameter->popEnter();
+	PopMenu* popWheelJointParameter = PopMenu::create();
+	popWheelJointParameter->addSlider("MotorSpeed");
+	popWheelJointParameter->addSlider("MaxMotorTorque");
+	popWheelJointParameter->addSlider("FrequencyHz");
+	popWheelJointParameter->addSlider("DampingRatio");
+	popWheelJointParameter->addCheckBox("EnableMotor");
+	popWheelJointParameter->addCheckBox("CollideConnected");
+	popWheelJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popWheelJointParameter);
+//	popWheelJointParameter->popEnter();
+
+	PopMenu* popDistanceJointParameter = PopMenu::create();
+	popDistanceJointParameter->addSlider("FrequencyHz");
+	popDistanceJointParameter->addSlider("DampingRatio");
+	popDistanceJointParameter->addCheckBox("CollideConnected");
+	popDistanceJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popDistanceJointParameter);
+
+
+	PopMenu* popRevoluteJointParameter = PopMenu::create();
+	popRevoluteJointParameter->addSlider("LowerAngle");
+	popRevoluteJointParameter->addSlider("UpperAngle");
+	popRevoluteJointParameter->addCheckBox("EnableLimit");
+	popRevoluteJointParameter->addSlider("MotorSpeed");
+	popRevoluteJointParameter->addSlider("MaxMotorTorque");
+	popRevoluteJointParameter->addCheckBox("EnableMotor");
+	popRevoluteJointParameter->addCheckBox("CollideConnected");
+	popRevoluteJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popRevoluteJointParameter);
+
 
 	auto pop = PopMenu::create();
 	pop->addButton("Move",[](){log("Test1 Touched!");});
@@ -138,15 +158,47 @@ void MenuLayer::addUI()
 	});
 
 	PopMenu* popJoint = PopMenu::create();
-	popJoint->addButton("Wheel",[](){PhysicsManager::getInstance()->setJointType(b2JointType::e_wheelJoint);});
-	popJoint->addButton("Distance",[](){PhysicsManager::getInstance()->setJointType(b2JointType::e_distanceJoint);});
+	popJoint->addButton("Wheel",[&,popWheelJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_wheelJoint);
+		_label->setString("Mode:Add Joint Wheel");
+		popWheelJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popWheelJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popWheelJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(2);
+	});
+	popJoint->addButton("Distance",[&,popDistanceJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_distanceJoint);
+		_label->setString("Mode:Add Joint Distance");
+		popDistanceJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popDistanceJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popDistanceJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(2);
+	});
+
+	popJoint->addButton("Revolute",[&,popRevoluteJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_revoluteJoint);
+		_label->setString("Mode:Add Joint Revolute");
+		popRevoluteJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popRevoluteJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popRevoluteJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(3);
+	});
 	popJoint->addButton("Create",[&](){_main->addJoint();});
 	popJoint->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
 	popJoint->setMargin(margin);
 	popRegular->setMaxHeight(maxHeight);
 	this->addChild(popJoint);
 
-	pop->setCallback("Add Joint",[&,popJoint,popJointParameter](){
+	pop->setCallback("Add Joint",[&,popJoint](){
 		if(PhysicsManager::getInstance()->getTouchType()!=PhysicsManager::ADD_JOINT_TYPE)
 		{
 			PhysicsManager::getInstance()->setTouchType(PhysicsManager::ADD_JOINT_TYPE);
@@ -155,14 +207,6 @@ void MenuLayer::addUI()
 			if(_popCurrent)
 				_popCurrent->popExit();
 			_popCurrent = popJoint;
-
-			popJointParameter->popEnter();
-			if(_popCurrent2&&_popCurrent2!=popJointParameter)
-				_popCurrent2->popExit();
-			_popCurrent2 = popJointParameter;
-
-			_main->clearMarks();
-			_main->setMaxMark(2);
 
 			PhysicsManager::getInstance()->setJointType(b2JointType::e_unknownJoint);
 		}
