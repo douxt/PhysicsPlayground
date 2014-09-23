@@ -67,6 +67,17 @@ void MenuLayer::addUI()
 	popRevoluteJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popRevoluteJointParameter);
 
+	PopMenu* popPrismaticJointParameter = PopMenu::create();
+	popPrismaticJointParameter->addSlider("LowerTranslation");
+	popPrismaticJointParameter->addSlider("UpperTranslation");
+	popPrismaticJointParameter->addCheckBox("EnableLimit");
+	popPrismaticJointParameter->addSlider("MotorSpeed");
+	popPrismaticJointParameter->addSlider("MaxMotorForce");
+	popPrismaticJointParameter->addCheckBox("EnableMotor");
+	popPrismaticJointParameter->addCheckBox("CollideConnected");
+	popPrismaticJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popPrismaticJointParameter);
+
 
 	auto pop = PopMenu::create();
 	pop->addButton("Move",[](){log("Test1 Touched!");});
@@ -127,13 +138,13 @@ void MenuLayer::addUI()
 	});
 
 	PopMenu* popCustom = PopMenu::create();
+	popCustom->setMaxHeight(maxHeight);
 	popCustom->addButton("Add",[&](){_main->setIsDelete(false);});
 	popCustom->addButton("Delete",[&](){_main->setIsDelete(true);});
 	popCustom->addButton("Clear",[&](){_main->clearMarks();});
 	popCustom->addButton("Confirm",[&](){_main->addCustomPolygon();});
 	popCustom->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
 	popCustom->setMargin(margin);
-	popRegular->setMaxHeight(maxHeight);
 	this->addChild(popCustom);
 
 	pop->setCallback("Add Custom",[&,popCustom,popAddParameter](){
@@ -153,11 +164,12 @@ void MenuLayer::addUI()
 			_popCurrent2 = popAddParameter;
 
 			_main->clearMarks();
-			_main->setMaxMark(16);
+			_main->setMaxMark(32);
 		}
 	});
 
 	PopMenu* popJoint = PopMenu::create();
+	popJoint->setMaxHeight(maxHeight);
 	popJoint->addButton("Wheel",[&,popWheelJointParameter](){
 		PhysicsManager::getInstance()->setJointType(b2JointType::e_wheelJoint);
 		_label->setString("Mode:Add Joint Wheel");
@@ -192,10 +204,22 @@ void MenuLayer::addUI()
 		_main->clearMarks();
 		_main->setMaxMark(3);
 	});
+
+	popJoint->addButton("Prismatic",[&,popPrismaticJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_prismaticJoint);
+		_label->setString("Mode:Add Joint Prismatic");
+		popPrismaticJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popPrismaticJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popPrismaticJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(3);
+	});
 	popJoint->addButton("Create",[&](){_main->addJoint();});
 	popJoint->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
 	popJoint->setMargin(margin);
-	popRegular->setMaxHeight(maxHeight);
+
 	this->addChild(popJoint);
 
 	pop->setCallback("Add Joint",[&,popJoint](){

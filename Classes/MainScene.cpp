@@ -149,19 +149,19 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 	{
 		auto touchLocation = touch->getLocation();    
 		auto nodePosition = convertToNodeSpace( touchLocation );
-		if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_wheelJoint)
-		{
-			return doMark(nodePosition);
-		}
-		if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_distanceJoint)
-		{
-			return doMark(nodePosition);
-		}
-		if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_revoluteJoint)
-		{
-			return doMark(nodePosition);
-		}
-		
+		//if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_wheelJoint)
+		//{
+		//	return doMark(nodePosition);
+		//}
+		//if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_distanceJoint)
+		//{
+		//	return doMark(nodePosition);
+		//}
+		//if(PhysicsManager::getInstance()->getJointType() == b2JointType::e_revoluteJoint)
+		//{
+		//	return doMark(nodePosition);
+		//}
+		return doMark(nodePosition);
 		return false;
 	}
 
@@ -306,7 +306,7 @@ void MainScene::addJoint()
 			return;
 		PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition());
 	}
-	if(jointType == b2JointType::e_revoluteJoint)
+	if(jointType == b2JointType::e_revoluteJoint || jointType == b2JointType::e_prismaticJoint)
 	{
 		if(_marks.size()<3)
 			return;

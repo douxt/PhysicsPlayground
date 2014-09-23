@@ -78,6 +78,9 @@ bool PhysicsManager::init()
 	_lowerAngle = -45;
 	_upperAngle = 45;
 	_enableLimit = true;
+	_lowerTranslation = -2.5f;
+	_upperTranslation = 5.0f;
+	_maxMotorForce = 10;
 //	addBlock(Point(500, 500),Size(100, 50));
 	addRegularPolygon(Point(500, 500));
 
@@ -119,8 +122,8 @@ void PhysicsManager::addRegularPolygon(Point pos)
 
 	auto body = _world->CreateBody(&bodydef);
 	body->SetSleepingAllowed(true);
-	body->SetLinearDamping(0.2);
-	body->SetAngularDamping(0.2);
+	body->SetLinearDamping(0);
+	body->SetAngularDamping(0);
 
 	int num = _sideNum;
 	auto radias =  _size/PTM_RATIO;
@@ -158,8 +161,8 @@ void PhysicsManager::addCircle(Point pos, float radias)
 
 	auto body = _world->CreateBody(&bodyDef);
 	body->SetSleepingAllowed(true);
-	body->SetLinearDamping(0.2);
-	body->SetAngularDamping(0.2);
+	body->SetLinearDamping(0);
+	body->SetAngularDamping(0);
 
 	b2CircleShape shape;
 	shape.m_radius = radias / PTM_RATIO;
@@ -183,8 +186,8 @@ void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)
 
 	auto body = _world->CreateBody(&bodydef);
 	body->SetSleepingAllowed(true);
-	body->SetLinearDamping(0.2);
-	body->SetAngularDamping(0.2);
+	body->SetLinearDamping(0);
+	body->SetAngularDamping(0);
 
 	int num = points.size();
 
@@ -455,6 +458,23 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 			rjd.collideConnected = _collideConnected;
 			_world->CreateJoint(&rjd);
 		}
+		if(_jointType == b2JointType::e_prismaticJoint)
+		{
+			b2PrismaticJointDef pjd;
+			auto delta = p1 - p2;
+			auto nor = delta.Normalize();
+			b2Vec2 axis = -b2Vec2(delta.x/nor, delta.y/nor);
+			pjd.Initialize(body1, body2, p3, axis);
+			pjd.upperTranslation = _upperTranslation;
+			pjd.lowerTranslation = _lowerTranslation;
+			pjd.enableLimit = _enableLimit;
+			pjd.motorSpeed = _motorSpeed;
+			pjd.maxMotorForce = _maxMotorForce;
+			pjd.enableMotor = _enableMotor;
+			pjd.collideConnected = _collideConnected;
+			_world->CreateJoint(&pjd);
+		}
+
 
 	}
 }
@@ -576,6 +596,24 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 			return _upperAngle;
 
 	}
+	if("LowerTranslation" == name)
+	{
+
+			return _lowerTranslation;
+
+	}
+	if("UpperTranslation" == name)
+	{
+
+			return _upperTranslation;
+
+	}
+	if("MaxMotorForce" == name)
+	{
+
+			return _maxMotorForce;
+
+	}
 
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
@@ -606,7 +644,7 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 
 	if("MaxMotorTorque" == name)
 	{
-			return Vec2(0, 1000);
+			return Vec2(0, 10000);
 	}
 	if("FrequencyHz" == name)
 	{
@@ -628,6 +666,25 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 			return Vec2(-180, 180);
 
 	}
+	if("LowerTranslation" == name)
+	{
+
+			return Vec2(-10, 10);
+
+	}
+	if("UpperTranslation" == name)
+	{
+
+			return Vec2(-10, 10);
+
+	}
+	if("MaxMotorForce" == name)
+	{
+
+			return Vec2(0, 1000);
+
+	}
+
 	log("No such property as: %s, range return NULL", name.c_str());
 	return NULL;
 }
@@ -688,6 +745,24 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 	{
 
 			_upperAngle = fval;
+
+	}
+	if("LowerTranslation" == name)
+	{
+
+			_lowerTranslation = fval;
+
+	}
+	if("UpperTranslation" == name)
+	{
+
+			_upperTranslation = fval;
+
+	}
+	if("MaxMotorForce" == name)
+	{
+
+			_maxMotorForce = fval;
 
 	}
 	log("No such property as: %s, nothing set", name.c_str());

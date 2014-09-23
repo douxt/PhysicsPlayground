@@ -1,0 +1,15 @@
+*.[oa]
+*.lib
+*.exe
+*.sdf
+*.opensdf
+cocos2d/
+proj.win32/Debug.win32/
+proj.android/assets
+proj.android/bin
+proj.android/libs
+proj.android/obj
+proj.android/res
+proj.ios_mac/
+proj.linux/
+proj.wp8-xaml/

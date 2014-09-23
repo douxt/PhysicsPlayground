@@ -84,6 +84,9 @@ private:
 	float _lowerAngle;
 	float _upperAngle;
 	bool _enableLimit;
+	float _lowerTranslation;
+	float _upperTranslation;
+	float _maxMotorForce;
 
 };
 
