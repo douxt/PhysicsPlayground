@@ -49,6 +49,7 @@ public:
 	Vec2 getRangeByName(const std::string& name);
 	void setPropertyByName(const std::string& name, float fval);
 	void setPropertyByNameBool(const std::string& name, bool bval);
+	b2BodyType getBodyType(int type);
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
 	CC_SYNTHESIZE(b2JointType, _jointType, JointType);
@@ -87,6 +88,8 @@ private:
 	float _lowerTranslation;
 	float _upperTranslation;
 	float _maxMotorForce;
+	float _bodyType;
+	bool _toGround;
 
 };
 

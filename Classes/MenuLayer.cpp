@@ -34,6 +34,7 @@ void MenuLayer::addUI()
 	popAddParameter->addSlider("Density");
 	popAddParameter->addSlider("Friction");
 	popAddParameter->addSlider("Restitution");
+	popAddParameter->addSlider("BodyType");
 	popAddParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popAddParameter);
 
@@ -44,6 +45,7 @@ void MenuLayer::addUI()
 	popWheelJointParameter->addSlider("DampingRatio");
 	popWheelJointParameter->addCheckBox("EnableMotor");
 	popWheelJointParameter->addCheckBox("CollideConnected");
+	popWheelJointParameter->addCheckBox("ToGround");
 	popWheelJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popWheelJointParameter);
 //	popWheelJointParameter->popEnter();
@@ -52,6 +54,7 @@ void MenuLayer::addUI()
 	popDistanceJointParameter->addSlider("FrequencyHz");
 	popDistanceJointParameter->addSlider("DampingRatio");
 	popDistanceJointParameter->addCheckBox("CollideConnected");
+	popDistanceJointParameter->addCheckBox("ToGround");
 	popDistanceJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popDistanceJointParameter);
 
@@ -64,6 +67,7 @@ void MenuLayer::addUI()
 	popRevoluteJointParameter->addSlider("MaxMotorTorque");
 	popRevoluteJointParameter->addCheckBox("EnableMotor");
 	popRevoluteJointParameter->addCheckBox("CollideConnected");
+	popRevoluteJointParameter->addCheckBox("ToGround");
 	popRevoluteJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popRevoluteJointParameter);
 
@@ -75,6 +79,7 @@ void MenuLayer::addUI()
 	popPrismaticJointParameter->addSlider("MaxMotorForce");
 	popPrismaticJointParameter->addCheckBox("EnableMotor");
 	popPrismaticJointParameter->addCheckBox("CollideConnected");
+	popPrismaticJointParameter->addCheckBox("ToGround");
 	popPrismaticJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popPrismaticJointParameter);
 

@@ -5,7 +5,7 @@ PhysicsManager* PhysicsManager::_physicsManager = nullptr;
 PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0),
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
 _groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),
-_jointType(b2JointType::e_unknownJoint),_collideConnected(false)
+_jointType(b2JointType::e_unknownJoint),_collideConnected(false),_bodyType(0),_toGround(false)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -63,6 +63,9 @@ bool PhysicsManager::init()
 
 	b2BodyDef bodyDef;
 	_groundBody = _world->CreateBody(&bodyDef);
+	b2EdgeShape shape;
+	shape.Set(b2Vec2(-40.0f, 0.0f), b2Vec2(40.0f, 0.0f));
+	_groundBody ->CreateFixture(&shape, 0.0f);
 	_size = 50;
 	_isPaused = false;
 	_fixtureDef.density = 15;
@@ -118,7 +121,8 @@ void PhysicsManager::addRegularPolygon(Point pos)
 		return;
 	}
 	b2BodyDef bodydef;
-	bodydef.type = b2_dynamicBody;
+	int bt = _bodyType;
+	bodydef.type = getBodyType(bt);
 
 	auto body = _world->CreateBody(&bodydef);
 	body->SetSleepingAllowed(true);
@@ -157,8 +161,9 @@ void PhysicsManager::addRegularPolygon(Point pos)
 void PhysicsManager::addCircle(Point pos, float radias)
 {
 	b2BodyDef bodyDef;
-	bodyDef.type = b2_dynamicBody;
-
+	int bt = _bodyType;
+//	bodyDef.type = b2_dynamicBody;
+	bodyDef.type = getBodyType(bt);
 	auto body = _world->CreateBody(&bodyDef);
 	body->SetSleepingAllowed(true);
 	body->SetLinearDamping(0);
@@ -182,8 +187,9 @@ void PhysicsManager::addCircle(Point pos, float radias)
 void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)
 {
 	b2BodyDef bodydef;
-	bodydef.type = b2_dynamicBody;
-
+//	bodydef.type = b2_dynamicBody;
+	int bt = _bodyType;
+	bodydef.type = getBodyType(bt);
 	auto body = _world->CreateBody(&bodydef);
 	body->SetSleepingAllowed(true);
 	body->SetLinearDamping(0);
@@ -240,7 +246,8 @@ public:
 	bool ReportFixture(b2Fixture* fixture)
 	{
 		b2Body* body = fixture->GetBody();
-		if (body->GetType() == b2_dynamicBody)
+//		if (body->GetType() == b2_dynamicBody)
+//		if (body->GetType() >= 0)
 		{
 			bool inside = fixture->TestPoint(m_point);
 			if (inside)
@@ -417,12 +424,15 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 {
 	auto body1 = getBodyAt(pos1);
 	auto body2 = getBodyAt(pos2);
-	if(body1 && body2)
+
+	if((body1 || _toGround)&& body2)
 	{
 		auto p1 = b2Vec2(pos1.x/PTM_RATIO, pos1.y/PTM_RATIO);
 		auto p2 = b2Vec2(pos2.x/PTM_RATIO, pos2.y/PTM_RATIO);
 		auto p3 = b2Vec2(pos3.x/PTM_RATIO, pos3.y/PTM_RATIO);
 
+		if(_toGround)
+			body1 = _groundBody;
 		if(_jointType == b2JointType::e_wheelJoint)
 		{
 			b2WheelJointDef wjd;
@@ -461,9 +471,17 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 		if(_jointType == b2JointType::e_prismaticJoint)
 		{
 			b2PrismaticJointDef pjd;
-			auto delta = p1 - p2;
-			auto nor = delta.Normalize();
-			b2Vec2 axis = -b2Vec2(delta.x/nor, delta.y/nor);
+			b2Vec2 axis;
+			if(_toGround)
+			{
+				axis = b2Vec2(0, 1);
+			}else
+			{
+				auto delta = p1 - p2;
+				auto nor = delta.Normalize();
+				axis = -b2Vec2(delta.x/nor, delta.y/nor);
+			}
+
 			pjd.Initialize(body1, body2, p3, axis);
 			pjd.upperTranslation = _upperTranslation;
 			pjd.lowerTranslation = _lowerTranslation;
@@ -520,6 +538,10 @@ bool PhysicsManager::getPropertyByNameBool(const std::string &name)
 	{
 		return _enableLimit;
 	}
+	if("ToGround" == name)
+	{
+		return _toGround;
+	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;	
 }
@@ -538,6 +560,10 @@ void PhysicsManager::setPropertyByNameBool(const std::string &name, bool bval)
 	if("EnableLimit" == name)
 	{
 		_enableLimit = bval;
+	}
+	if("ToGround" == name)
+	{
+		_toGround = bval;
 	}
 	log("No such property as: %s, nothing set", name.c_str());
 }
@@ -614,7 +640,12 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 			return _maxMotorForce;
 
 	}
+	if("BodyType" == name)
+	{
 
+			return _bodyType;
+
+	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
 }
@@ -684,7 +715,12 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 			return Vec2(0, 1000);
 
 	}
+	if("BodyType" == name)
+	{
 
+			return Vec2(0, 2);
+
+	}
 	log("No such property as: %s, range return NULL", name.c_str());
 	return NULL;
 }
@@ -765,5 +801,28 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 			_maxMotorForce = fval;
 
 	}
+	if("BodyType" == name)
+	{
+
+			_bodyType = fval;
+
+	}
 	log("No such property as: %s, nothing set", name.c_str());
+}
+
+b2BodyType PhysicsManager::getBodyType(int bt)
+{
+	if(bt == 0)
+	{
+		return b2_dynamicBody;
+	}
+	if(bt == 1)
+	{
+		return  b2_kinematicBody;
+	}
+	if(bt == 2)
+	{
+		return  b2_staticBody;
+	}
+	return b2_dynamicBody;
 }
