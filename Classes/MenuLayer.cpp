@@ -83,6 +83,11 @@ void MenuLayer::addUI()
 	popPrismaticJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popPrismaticJointParameter);
 
+	PopMenu* popPulleyJointParameter = PopMenu::create();
+	popPulleyJointParameter->addSlider("PulleyRatio");
+	popPulleyJointParameter->addCheckBox("CollideConnected");
+	popPulleyJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popPulleyJointParameter);
 
 	auto pop = PopMenu::create();
 	pop->addButton("Move",[](){log("Test1 Touched!");});
@@ -220,6 +225,18 @@ void MenuLayer::addUI()
 
 		_main->clearMarks();
 		_main->setMaxMark(3);
+	});
+
+	popJoint->addButton("Pulley",[&,popPulleyJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_pulleyJoint);
+		_label->setString("Mode:Add Joint Pulley");
+		popPulleyJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popPulleyJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popPulleyJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(4);
 	});
 	popJoint->addButton("Create",[&](){_main->addJoint();});
 	popJoint->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));

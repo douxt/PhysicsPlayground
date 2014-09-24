@@ -34,7 +34,7 @@ public:
 
 	void addCustomPolygon(const std::vector<Vec2>& points);
 	void addCircle(Point pos, float radias);
-	void addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3 = Vec2());
+	void addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3 = Vec2(), const Vec2& pos4 = Vec2());
 
 	b2Body* getBodyAt(const Vec2& pos);
 	void deleteBodyAt(const Vec2& pos);
@@ -90,6 +90,7 @@ private:
 	float _maxMotorForce;
 	float _bodyType;
 	bool _toGround;
+	float _pulleyRatio;
 
 };
 

@@ -312,6 +312,13 @@ void MainScene::addJoint()
 			return;
 		PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition(),_marks.at(2)->getPosition());
 	}
+	if(jointType == b2JointType::e_pulleyJoint)
+	{
+		if(_marks.size()<4)
+			return;
+		PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition(),
+												_marks.at(2)->getPosition(),_marks.at(3)->getPosition());
+	}
 
 }
 void MainScene::clearMarks()

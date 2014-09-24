@@ -5,7 +5,8 @@ PhysicsManager* PhysicsManager::_physicsManager = nullptr;
 PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0),
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
 _groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),
-_jointType(b2JointType::e_unknownJoint),_collideConnected(false),_bodyType(0),_toGround(false)
+_jointType(b2JointType::e_unknownJoint),_collideConnected(false),_bodyType(0),_toGround(false),
+_pulleyRatio(1)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -420,7 +421,7 @@ void PhysicsManager::addWheelJoint(const Vec2& pos)
 	}
 }
 
-void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3)
+void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3, const Vec2& pos4)
 {
 	auto body1 = getBodyAt(pos1);
 	auto body2 = getBodyAt(pos2);
@@ -430,6 +431,7 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 		auto p1 = b2Vec2(pos1.x/PTM_RATIO, pos1.y/PTM_RATIO);
 		auto p2 = b2Vec2(pos2.x/PTM_RATIO, pos2.y/PTM_RATIO);
 		auto p3 = b2Vec2(pos3.x/PTM_RATIO, pos3.y/PTM_RATIO);
+		auto p4 = b2Vec2(pos4.x/PTM_RATIO, pos4.y/PTM_RATIO);
 
 		if(_toGround)
 			body1 = _groundBody;
@@ -489,6 +491,14 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 			pjd.motorSpeed = _motorSpeed;
 			pjd.maxMotorForce = _maxMotorForce;
 			pjd.enableMotor = _enableMotor;
+			pjd.collideConnected = _collideConnected;
+			_world->CreateJoint(&pjd);
+		}
+		if(_jointType == b2JointType::e_pulleyJoint)
+		{
+			b2PulleyJointDef pjd;
+
+			pjd.Initialize(body1, body2, p3, p4, p1, p2, _pulleyRatio);
 			pjd.collideConnected = _collideConnected;
 			_world->CreateJoint(&pjd);
 		}
@@ -646,6 +656,12 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 			return _bodyType;
 
 	}
+	if("PulleyRatio" == name)
+	{
+
+			return _pulleyRatio;
+
+	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
 }
@@ -719,6 +735,12 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 	{
 
 			return Vec2(0, 2);
+
+	}
+	if("PulleyRatio" == name)
+	{
+
+			return Vec2(0, 10);
 
 	}
 	log("No such property as: %s, range return NULL", name.c_str());
@@ -805,6 +827,12 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 	{
 
 			_bodyType = fval;
+
+	}
+	if("PulleyRatio" == name)
+	{
+
+			_pulleyRatio = fval;
 
 	}
 	log("No such property as: %s, nothing set", name.c_str());
