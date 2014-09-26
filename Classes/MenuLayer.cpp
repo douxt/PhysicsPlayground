@@ -89,6 +89,14 @@ void MenuLayer::addUI()
 	popPulleyJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popPulleyJointParameter);
 
+	PopMenu* popWeldJointParameter = PopMenu::create();
+	popWeldJointParameter->addSlider("FrequencyHz");
+	popWeldJointParameter->addSlider("DampingRatio");
+	popWeldJointParameter->addCheckBox("CollideConnected");
+	popWeldJointParameter->addCheckBox("ToGround");
+	popWeldJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popWeldJointParameter);
+
 	auto pop = PopMenu::create();
 	pop->addButton("Move",[](){log("Test1 Touched!");});
 	pop->addButton("Add Regular",[](){log("Test2 Touched!");});
@@ -237,6 +245,18 @@ void MenuLayer::addUI()
 
 		_main->clearMarks();
 		_main->setMaxMark(4);
+	});
+
+	popJoint->addButton("Weld",[&,popWeldJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_weldJoint);
+		_label->setString("Mode:Add Joint Weld");
+		popWeldJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popWeldJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popWeldJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(3);
 	});
 	popJoint->addButton("Create",[&](){_main->addJoint();});
 	popJoint->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));

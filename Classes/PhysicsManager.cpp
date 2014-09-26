@@ -502,7 +502,15 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 			pjd.collideConnected = _collideConnected;
 			_world->CreateJoint(&pjd);
 		}
-
+		if(_jointType == b2JointType::e_weldJoint)
+		{
+			b2WeldJointDef wjd;
+			wjd.dampingRatio = _dampingRatio;
+			wjd.frequencyHz = _frequencyHz;
+			wjd.collideConnected = _collideConnected;
+			wjd.Initialize(body1, body2, p3);
+			_world->CreateJoint(&wjd);
+		}
 
 	}
 }
