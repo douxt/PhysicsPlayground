@@ -6,7 +6,7 @@ PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0)
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
 _groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),
 _jointType(b2JointType::e_unknownJoint),_collideConnected(false),_bodyType(0),_toGround(false),
-_pulleyRatio(1)
+_pulleyRatio(1),_maxLength(0),_maxForce(0),_maxTorque(0),_gearRatio(1)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -386,7 +386,8 @@ void PhysicsManager::deleteBodyAt(const Vec2& pos)
 	b2Body* body = getBodyAt(pos);
 	if(body)
 	{
-		_world->DestroyBody(body);
+		_bodyDelete.push_back(body);
+//		_world->DestroyBody(body);
 	}
 }
 
@@ -511,8 +512,80 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 			wjd.Initialize(body1, body2, p3);
 			_world->CreateJoint(&wjd);
 		}
+		if(_jointType == b2JointType::e_ropeJoint)
+		{
+			b2RopeJointDef rjd;
+//			rjd.maxLength = _maxLength/PTM_RATIO;
+			rjd.maxLength = (p2 - p1).Length();
+			rjd.bodyA = body1;
+			rjd.bodyB = body2;
+			rjd.localAnchorA = body1->GetLocalPoint(p1);
+			rjd.localAnchorB = body2->GetLocalPoint(p2);
+			rjd.collideConnected = _collideConnected;
+		
+			_world->CreateJoint(&rjd);
+		}
+
+		if(_jointType == b2JointType::e_frictionJoint)
+		{
+			b2FrictionJointDef fjd;
+			fjd.localAnchorA.SetZero();
+			fjd.localAnchorB.SetZero();
+			fjd.bodyA = body1;
+			fjd.bodyB = body2;
+			fjd.collideConnected = _collideConnected;
+			fjd.maxForce = _maxForce;
+			fjd.maxTorque = _maxTorque;
+
+			_world->CreateJoint(&fjd);
+		}
+		if(_jointType == b2JointType::e_motorJoint)
+		{
+			b2MotorJointDef mjd;
+			mjd.Initialize(body1, body2);
+			mjd.collideConnected = _collideConnected;
+			mjd.maxForce = _maxForce;
+			mjd.maxTorque = _maxTorque;
+
+			_world->CreateJoint(&mjd);
+		}
+		if(_jointType == b2JointType::e_gearJoint)
+		{
+			auto joint1 = getJointForGear(body1);
+			auto joint2 = getJointForGear(body2);
+			if(joint1 && joint2)
+			{
+				b2GearJointDef gjd;
+				gjd.bodyA = body1;
+				gjd.bodyB = body2;
+				gjd.joint1 = joint1;
+				gjd.joint2 = joint2;
+				gjd.ratio = _gearRatio;
+				gjd.collideConnected = _collideConnected;
+				_world->CreateJoint(&gjd);
+			}else
+			{
+				log("Create Gear Joint Failed: joint must be revolute or prismatic!");
+			}
+
+		}
 
 	}
+}
+
+b2Joint* PhysicsManager::getJointForGear(b2Body* body)
+{
+	for(auto jl = body->GetJointList(); jl; jl = jl->next)
+	{
+		auto joint = jl->joint;
+		auto type = joint->GetType() ;
+		if(type == b2JointType::e_revoluteJoint || type == b2JointType::e_prismaticJoint)
+		{
+			log("find good joint!");
+			return joint;
+		}		
+	}
+	return nullptr;
 }
 
 void PhysicsManager::pause()
@@ -530,6 +603,37 @@ void PhysicsManager::update(float dt)
 	if(!_isPaused)
 	{
 		_world->Step(dt, 8, 8);
+	}
+	doDelete(); // do not delete while Step running.
+
+}
+
+void PhysicsManager::doDelete()
+{
+	if(_bodyDelete.size()>0)
+	{
+		for(auto body : _bodyDelete)
+		{
+			_jointDelete.clear();
+			for(auto jl = body->GetJointList(); jl; jl = jl->next)
+			{
+				if(jl->joint)
+					_jointDelete.push_back(jl->joint);
+			}
+			for(auto joint : _jointDelete)
+			{
+				if(joint->GetType() == b2JointType::e_gearJoint)
+				{
+					_world->DestroyJoint(joint);
+				}
+			}
+			for(auto joint : _jointDelete)
+			{
+					_world->DestroyJoint(joint);
+			}
+			_world->DestroyBody(body);
+		}
+		_bodyDelete.clear();
 	}
 }
 
@@ -670,6 +774,28 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 			return _pulleyRatio;
 
 	}
+	if("MaxLength" == name)
+	{
+
+			return _maxLength;
+
+	}
+	if("MaxForce" == name)
+	{
+
+			return _maxForce;
+
+	}
+	if("MaxTorque" == name)
+	{
+
+			return _maxTorque;
+	}
+	if("GearRatio" == name)
+	{
+
+			return _gearRatio;
+	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
 }
@@ -749,7 +875,29 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 	{
 
 			return Vec2(0, 10);
+	}
+	if("MaxLength" == name)
+	{
 
+			return Vec2(0, 1000);
+
+	}
+	if("MaxForce" == name)
+	{
+
+			return Vec2(0, 1000);
+
+	}
+	if("MaxTorque" == name)
+	{
+
+			return Vec2(0, 1000);
+
+	}
+	if("GearRatio" == name)
+	{
+
+			return Vec2(0.1, 10.1);
 	}
 	log("No such property as: %s, range return NULL", name.c_str());
 	return NULL;
@@ -841,7 +989,29 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 	{
 
 			_pulleyRatio = fval;
+	}
+	if("MaxLength" == name)
+	{
 
+			_maxLength = fval;
+
+	}
+	if("MaxForce" == name)
+	{
+
+			_maxForce = fval;
+
+	}
+	if("MaxTorque" == name)
+	{
+
+			_maxTorque = fval;
+
+	}
+	if("GearRatio" == name)
+	{
+
+			_gearRatio = fval;
 	}
 	log("No such property as: %s, nothing set", name.c_str());
 }

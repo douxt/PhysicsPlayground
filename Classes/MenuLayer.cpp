@@ -97,6 +97,34 @@ void MenuLayer::addUI()
 	popWeldJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
 	this->addChild(popWeldJointParameter);
 
+	PopMenu* popRopeJointParameter = PopMenu::create();
+//	popRopeJointParameter->addSlider("MaxLength");
+	popRopeJointParameter->addCheckBox("CollideConnected");
+	popRopeJointParameter->addCheckBox("ToGround");
+	popRopeJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popRopeJointParameter);
+
+	PopMenu* popFrictionJointParameter = PopMenu::create();
+	popFrictionJointParameter->addSlider("MaxForce");
+	popFrictionJointParameter->addSlider("MaxTorque");
+	popFrictionJointParameter->addCheckBox("CollideConnected");
+	popFrictionJointParameter->addCheckBox("ToGround");
+	popFrictionJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popFrictionJointParameter);
+
+	PopMenu* popMotorJointParameter = PopMenu::create();
+	popMotorJointParameter->addSlider("MaxForce");
+	popMotorJointParameter->addSlider("MaxTorque");
+	popMotorJointParameter->addCheckBox("CollideConnected");
+	popMotorJointParameter->addCheckBox("ToGround");
+	popMotorJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popMotorJointParameter);
+
+	PopMenu* popGearJointParameter = PopMenu::create();
+	popGearJointParameter->addSlider("GearRatio");
+	popGearJointParameter->setPosition(origin.x + visibleSize.width/2, origin.y + visibleSize.height);
+	this->addChild(popGearJointParameter);
+
 	auto pop = PopMenu::create();
 	pop->addButton("Move",[](){log("Test1 Touched!");});
 	pop->addButton("Add Regular",[](){log("Test2 Touched!");});
@@ -257,6 +285,51 @@ void MenuLayer::addUI()
 
 		_main->clearMarks();
 		_main->setMaxMark(3);
+	});
+
+	popJoint->addButton("Rope",[&,popRopeJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_ropeJoint);
+		_label->setString("Mode:Add Joint Rope");
+		popRopeJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popRopeJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popRopeJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(2);
+	});
+	popJoint->addButton("Friction",[&,popFrictionJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_frictionJoint);
+		_label->setString("Mode:Add Joint Friction");
+		popFrictionJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popFrictionJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popFrictionJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(2);
+	});
+	popJoint->addButton("Motor",[&,popMotorJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_motorJoint);
+		_label->setString("Mode:Add Joint Motor");
+		popMotorJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popMotorJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popMotorJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(2);
+	});
+	popJoint->addButton("Gear",[&,popGearJointParameter](){
+		PhysicsManager::getInstance()->setJointType(b2JointType::e_gearJoint);
+		_label->setString("Mode:Add Joint Gear");
+		popGearJointParameter->popEnter();
+		if(_popCurrent2&&_popCurrent2!=popGearJointParameter)
+			_popCurrent2->popExit();
+		_popCurrent2 = popGearJointParameter;
+
+		_main->clearMarks();
+		_main->setMaxMark(2);
 	});
 	popJoint->addButton("Create",[&](){_main->addJoint();});
 	popJoint->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));

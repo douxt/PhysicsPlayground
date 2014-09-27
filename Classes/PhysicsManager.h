@@ -50,6 +50,8 @@ public:
 	void setPropertyByName(const std::string& name, float fval);
 	void setPropertyByNameBool(const std::string& name, bool bval);
 	b2BodyType getBodyType(int type);
+	void doDelete();
+	b2Joint* getJointForGear(b2Body* body);
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
 	CC_SYNTHESIZE(b2JointType, _jointType, JointType);
@@ -91,7 +93,12 @@ private:
 	float _bodyType;
 	bool _toGround;
 	float _pulleyRatio;
-
+	float _maxLength;
+	float _maxForce;
+	float _maxTorque;
+	std::vector<b2Joint*> _jointDelete;
+	std::vector<b2Body*> _bodyDelete;
+	float _gearRatio;
 };
 
 

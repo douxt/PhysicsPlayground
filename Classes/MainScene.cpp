@@ -300,7 +300,9 @@ void MainScene::addCustomPolygon()
 void MainScene::addJoint()
 {
 	auto jointType = PhysicsManager::getInstance()->getJointType();
-	if(jointType == b2JointType::e_distanceJoint || jointType ==b2JointType::e_wheelJoint)
+	if(jointType == b2JointType::e_distanceJoint || jointType ==b2JointType::e_wheelJoint
+		|| jointType ==b2JointType::e_ropeJoint || jointType ==b2JointType::e_frictionJoint
+		|| jointType ==b2JointType::e_motorJoint || jointType ==b2JointType::e_gearJoint)
 	{
 		if(_marks.size()<2)
 			return;
