@@ -71,6 +71,8 @@ public:
 
 	void addJoint();
 
+	void addNoCollide();
+
 public:
 	CC_SYNTHESIZE(bool, _isDelete, IsDelete);
 	CC_SYNTHESIZE(int, _maxMark, MaxMark);

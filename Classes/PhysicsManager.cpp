@@ -6,15 +6,25 @@ PhysicsManager::PhysicsManager():_world(nullptr),_debugDraw(nullptr),_sideNum(0)
 _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
 _groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),
 _jointType(b2JointType::e_unknownJoint),_collideConnected(false),_bodyType(0),_toGround(false),
-_pulleyRatio(1),_maxLength(0),_maxForce(0),_maxTorque(0),_gearRatio(1)
+_pulleyRatio(1),_maxLength(0),_maxForce(0),_maxTorque(0),_gearRatio(1),_filter(nullptr),
+_gadgetType(GadgetType::GADGET_INVALID),_maxControllerNum(10)
 {}
 
 PhysicsManager::~PhysicsManager()
 {
+	b2Body* bl = _world->GetBodyList();
+	while(bl)
+	{
+		b2Body* bNext = bl->GetNext();
+		auto info = (BodyInfo*)(bl->GetUserData());
+		CC_SAFE_RELEASE(info);
+		bl = bNext;
+	}
+
 	delete _world;
-	_world = nullptr;
+//	_world = nullptr;
 	delete _debugDraw;
-	_debugDraw = nullptr;
+	delete _filter;
 }
 
 PhysicsManager* PhysicsManager::getInstance()
@@ -52,6 +62,9 @@ bool PhysicsManager::init()
 //	std::vector<int> vi = {1,2,3};
 	_debugDraw = new GLESDebugDraw(PTM_RATIO);
 	_world->SetDebugDraw(_debugDraw);
+
+	_filter = new CustomFilter();
+	_world->SetContactFilter(_filter);
 	_enableMotor = true;
 	uint32 flags = 0;
 	flags += b2Draw::e_shapeBit
@@ -111,6 +124,11 @@ bool PhysicsManager::init()
 	tableBox.Set(b2Vec2(sz.width/PTM_RATIO, 0.0f), b2Vec2(sz.width/PTM_RATIO, 2*sz.height/PTM_RATIO));
 	tableBody->CreateFixture(&tableBox, 0);
 
+	for(int i=0; i <_maxControllerNum;i++)
+	{
+		_controller.push_back(0);
+	}
+
 	return true;
 }
 
@@ -130,6 +148,10 @@ void PhysicsManager::addRegularPolygon(Point pos)
 	body->SetLinearDamping(0);
 	body->SetAngularDamping(0);
 
+	BodyInfo* bodyInfo = BodyInfo::create();
+	bodyInfo->retain();
+	body->SetUserData(bodyInfo);
+//	body->~b2Body();
 	int num = _sideNum;
 	auto radias =  _size/PTM_RATIO;
 
@@ -170,6 +192,10 @@ void PhysicsManager::addCircle(Point pos, float radias)
 	body->SetLinearDamping(0);
 	body->SetAngularDamping(0);
 
+	BodyInfo* bodyInfo = BodyInfo::create();
+	bodyInfo->retain();
+	body->SetUserData(bodyInfo);
+
 	b2CircleShape shape;
 	shape.m_radius = radias / PTM_RATIO;
 
@@ -195,6 +221,9 @@ void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)
 	body->SetSleepingAllowed(true);
 	body->SetLinearDamping(0);
 	body->SetAngularDamping(0);
+	BodyInfo* bodyInfo = BodyInfo::create();
+	bodyInfo->retain();
+	body->SetUserData(bodyInfo);
 
 	int num = points.size();
 
@@ -579,13 +608,43 @@ b2Joint* PhysicsManager::getJointForGear(b2Body* body)
 	{
 		auto joint = jl->joint;
 		auto type = joint->GetType() ;
-		if(type == b2JointType::e_revoluteJoint || type == b2JointType::e_prismaticJoint)
+		if(type == b2JointType::e_revoluteJoint)
 		{
-			log("find good joint!");
+			log("find good joint!  revolute!");
 			return joint;
-		}		
+		}
+		if(type == b2JointType::e_prismaticJoint)
+		{
+			log("find good joint!  prismatic!");
+			return joint;
+		}	
 	}
 	return nullptr;
+}
+
+void PhysicsManager::addNoCollide(const Vec2& pos1, const Vec2& pos2)
+{
+	auto body1 = getBodyAt(pos1);
+	auto body2 = getBodyAt(pos2);
+
+	if(body1 && body2)
+	{
+		if(_touchType == NO_COLLIDE_TYPE)
+		{
+			auto info1 = (BodyInfo*)body1->GetUserData();
+			info1->collides.push_back(body2);
+			auto info2 = (BodyInfo*)body2->GetUserData();
+			info2->collides.push_back(body1);
+		}
+		if(_touchType == COLLIDE_TYPE)
+		{
+			auto info1 = (BodyInfo*)body1->GetUserData();
+			info1->deleteCollide(body2);
+			auto info2 = (BodyInfo*)body2->GetUserData();
+			info2->deleteCollide(body1);
+		}
+
+	}
 }
 
 void PhysicsManager::pause()
@@ -602,6 +661,12 @@ void PhysicsManager::update(float dt)
 {
 	if(!_isPaused)
 	{
+		for(auto body : _thrusters)
+		{
+			b2Vec2 worldVec2 = body->GetWorldVector(b2Vec2(0, _controller[0]*10000));
+			b2Vec2 worldPoint = body->GetWorldPoint(b2Vec2(0, 0));
+			body->ApplyForce(worldVec2, worldPoint, true);
+		}
 		_world->Step(dt, 8, 8);
 	}
 	doDelete(); // do not delete while Step running.
@@ -630,6 +695,13 @@ void PhysicsManager::doDelete()
 			for(auto joint : _jointDelete)
 			{
 					_world->DestroyJoint(joint);
+			}
+			auto info =(BodyInfo*)body->GetUserData();
+			auto collides = info->collides;
+			for(auto collide : collides)
+			{
+				auto info = (BodyInfo*)collide->GetUserData();
+				info->deleteCollide(body);
 			}
 			_world->DestroyBody(body);
 		}
@@ -796,6 +868,16 @@ float PhysicsManager::getPropertyByName(const std::string &name)
 
 			return _gearRatio;
 	}
+
+	if(name.substr(0, 10) == "Controller")
+	{
+		auto num = atoi(name.substr(10,2).c_str());
+		if(num >=0 && num < _maxControllerNum)
+		{
+			log("get %s", name.c_str());
+			return _controller[num];
+		}
+	}
 	log("No such property as: %s, return NULL", name.c_str());
 	return NULL;
 }
@@ -899,6 +981,11 @@ Vec2 PhysicsManager::getRangeByName(const std::string &name)
 
 			return Vec2(0.1, 10.1);
 	}
+
+	if(name.substr(0, 10) == "Controller")
+	{
+		return Vec2(-1, 1);
+	}
 	log("No such property as: %s, range return NULL", name.c_str());
 	return NULL;
 }
@@ -935,83 +1022,95 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 	{
 
 			_maxMotorTorque = fval;
-
+			return;
 	}
 	if("FrequencyHz" == name)
 	{
 
 			_frequencyHz = fval;
-
+			return;
 	}
 	if("DampingRatio" == name)
 	{
 
 			_dampingRatio = fval;
-
+			return;
 	}
 	if("LowerAngle" == name)
 	{
 
 			_lowerAngle = fval;
-
+			return;
 	}
 	if("UpperAngle" == name)
 	{
 
 			_upperAngle = fval;
-
+			return;
 	}
 	if("LowerTranslation" == name)
 	{
 
 			_lowerTranslation = fval;
-
+			return;
 	}
 	if("UpperTranslation" == name)
 	{
 
 			_upperTranslation = fval;
-
+			return;
 	}
 	if("MaxMotorForce" == name)
 	{
 
 			_maxMotorForce = fval;
-
+			return;
 	}
 	if("BodyType" == name)
 	{
 
 			_bodyType = fval;
-
+			return;
 	}
 	if("PulleyRatio" == name)
 	{
 
 			_pulleyRatio = fval;
+			return;
 	}
 	if("MaxLength" == name)
 	{
 
 			_maxLength = fval;
-
+			return;
 	}
 	if("MaxForce" == name)
 	{
 
 			_maxForce = fval;
-
+			return;
 	}
 	if("MaxTorque" == name)
 	{
 
 			_maxTorque = fval;
-
+			return;
 	}
 	if("GearRatio" == name)
 	{
 
 			_gearRatio = fval;
+			return;
+	}
+	if(name.substr(0, 10) == "Controller")
+	{
+		auto num = atoi(name.substr(10,2).c_str());
+		if(num >=0 && num < _maxControllerNum)
+		{
+			log("set %s", name.c_str());
+			_controller[num] = fval;
+			return;
+		}
 	}
 	log("No such property as: %s, nothing set", name.c_str());
 }
@@ -1031,4 +1130,81 @@ b2BodyType PhysicsManager::getBodyType(int bt)
 		return  b2_staticBody;
 	}
 	return b2_dynamicBody;
+}
+
+bool PhysicsManager::BodyInfo::init()
+{
+	return true;
+}
+
+void PhysicsManager::BodyInfo::deleteCollide(b2Body* body)
+{
+	auto result=std::find(collides.begin(),collides.end(), body);
+	if(result != collides.end())
+	{
+		collides.erase(result);
+	}
+}
+
+
+bool PhysicsManager::CustomFilter::ShouldCollide(b2Fixture* fixtureA, b2Fixture* fixtureB)
+{
+	auto bodyA = fixtureA->GetBody();
+	auto bodyB = fixtureB->GetBody();
+	auto bodyInfo = (BodyInfo*)bodyA->GetUserData();
+	if(bodyInfo)
+	{
+		auto& collide = bodyInfo->collides;
+		return std::find(collide.begin(), collide.end(), bodyB) == collide.end();
+	}
+	return b2ContactFilter::ShouldCollide(fixtureA, fixtureB);
+}
+
+void PhysicsManager::addGadgetAt(const Vec2& pos)
+{
+	b2BodyDef bodydef;
+//	bodydef.type = b2_dynamicBody;
+	int bt = _bodyType;
+	bodydef.type = getBodyType(bt);
+	auto body = _world->CreateBody(&bodydef);
+	body->SetSleepingAllowed(true);
+	body->SetLinearDamping(0);
+	body->SetAngularDamping(0);
+	BodyInfo* bodyInfo = BodyInfo::create();
+	bodyInfo->retain();
+	body->SetUserData(bodyInfo);
+
+	_thrusters.push_back(body);
+	b2Vec2 base = b2Vec2(pos.x/PTM_RATIO, pos.y/PTM_RATIO);
+
+	b2Vec2 vertices[3];
+	float size = 1;
+	vertices[0] = b2Vec2(-size, -size);
+	vertices[1] = b2Vec2(0.0, 0.0);
+	vertices[2] = b2Vec2(0.0, size);
+
+	b2PolygonShape poly1;
+	poly1.Set(vertices, 3);
+
+	b2FixtureDef sd1(_fixtureDef);
+	sd1.shape = &poly1;
+
+	vertices[0] = b2Vec2(size, -size);
+
+	b2PolygonShape poly2;
+	poly2.Set(vertices, 3);
+
+	b2FixtureDef sd2(_fixtureDef);
+	sd2.shape = &poly2;
+
+	body->CreateFixture(&sd1);
+	body->CreateFixture(&sd2);
+
+	if(body){
+		body->SetTransform(
+			base,
+			body->GetAngle());
+	}
+
+	
 }

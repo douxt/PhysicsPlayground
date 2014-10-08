@@ -179,6 +179,20 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 		PhysicsManager::getInstance()->deleteBodyAt(nodePosition);
 		return false;
 	}
+	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::NO_COLLIDE_TYPE 
+		|| PhysicsManager::getInstance()->getTouchType() == PhysicsManager::COLLIDE_TYPE)
+	{
+		auto pos = this->convertToNodeSpace(touch->getLocation());
+		return doMark(pos);
+	}
+
+	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::ADD_GADGET)
+	{
+		auto touchLocation = touch->getLocation();    
+		auto nodePosition = convertToNodeSpace( touchLocation );
+		PhysicsManager::getInstance()->addGadgetAt(nodePosition);
+		return false;
+	}
 	return false;
 }
 
@@ -323,6 +337,18 @@ void MainScene::addJoint()
 	}
 
 }
+
+void MainScene::addNoCollide()
+{
+	auto type = PhysicsManager::getInstance()->getTouchType();
+	if(type == PhysicsManager::NO_COLLIDE_TYPE || type == PhysicsManager::COLLIDE_TYPE)
+	{
+		if(_marks.size()<2)
+			return;
+		PhysicsManager::getInstance()->addNoCollide(_marks.at(0)->getPosition(),_marks.at(1)->getPosition());
+	}
+}
+
 void MainScene::clearMarks()
 {
 	for(auto mk: _marks)

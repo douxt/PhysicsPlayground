@@ -130,6 +130,8 @@ void MenuLayer::addUI()
 	pop->addButton("Add Regular",[](){log("Test2 Touched!");});
 	pop->addButton("Add Custom",[](){log("Test3 Touched!");});
 	pop->addButton("Add Joint",[](){log("Test4 Touched!");});
+	pop->addButton("No Collide",[](){log("Test4 Touched!");});
+	pop->addButton("Gadgets",[](){log("Test4 Touched!");});
 	pop->setPosition(origin.x + visibleSize.width - pop->getListViewContentSize().width, origin.y + visibleSize.height);
 	pop->setName("popMain");
 	this->addChild(pop);
@@ -346,10 +348,79 @@ void MenuLayer::addUI()
 			if(_popCurrent)
 				_popCurrent->popExit();
 			_popCurrent = popJoint;
+			if(_popCurrent2&&_popCurrent2!=nullptr)
+				_popCurrent2->popExit();
+			_popCurrent2 = nullptr;
 
 			PhysicsManager::getInstance()->setJointType(b2JointType::e_unknownJoint);
 		}
 	});
+
+	PopMenu* popNoCollide = PopMenu::create();
+	popNoCollide->setMaxHeight(maxHeight);
+	popNoCollide->addButton("Collide",[&](){
+		if(PhysicsManager::getInstance()->getTouchType()!=PhysicsManager::COLLIDE_TYPE)
+		{
+			PhysicsManager::getInstance()->setTouchType(PhysicsManager::COLLIDE_TYPE);
+			_label->setString("Mode:Collide");
+
+//			PhysicsManager::getInstance()->setJointType(b2JointType::e_unknownJoint);
+		}
+	});
+	popNoCollide->addButton("Confirm",[&](){
+//		PhysicsManager::getInstance()->setJointType(b2JointType::e_wheelJoint);
+//		_label->setString("Mode:Add Joint Wheel");
+		_main->addNoCollide();
+	});
+	popNoCollide->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
+	popNoCollide->setMargin(margin);
+	this->addChild(popNoCollide);
+
+	pop->setCallback("No Collide",[&,popNoCollide](){
+		if(PhysicsManager::getInstance()->getTouchType()!=PhysicsManager::NO_COLLIDE_TYPE)
+		{
+			PhysicsManager::getInstance()->setTouchType(PhysicsManager::NO_COLLIDE_TYPE);
+			_label->setString("Mode:No Collide");
+			popNoCollide->popEnter();
+			if(_popCurrent&&_popCurrent!=popNoCollide)
+				_popCurrent->popExit();
+			_popCurrent = popNoCollide;
+			if(_popCurrent2&&_popCurrent2!=nullptr)
+				_popCurrent2->popExit();
+			_popCurrent2 = nullptr;
+
+			_main->clearMarks();
+			_main->setMaxMark(2);
+//			PhysicsManager::getInstance()->setJointType(b2JointType::e_unknownJoint);
+		}
+	});
+
+	PopMenu* popGadgets = PopMenu::create();
+	popGadgets->setMaxHeight(maxHeight);
+	popGadgets->addButton("Thruster",[&](){
+		PhysicsManager::getInstance()->setGadgetType(PhysicsManager::GADGET_THRUSTER);
+		_label->setString("Mode:Gadgets-Thruster");
+	});
+	popGadgets->setPosition(pop->getPosition() - Vec2(0, pop->getListViewContentSize().height));
+	popGadgets->setMargin(margin);
+	this->addChild(popGadgets);
+
+	pop->setCallback("Gadgets",[&,popGadgets](){
+		if(PhysicsManager::getInstance()->getTouchType()!=PhysicsManager::ADD_GADGET)
+		{
+			PhysicsManager::getInstance()->setTouchType(PhysicsManager::ADD_GADGET);
+			_label->setString("Mode:Gadgets");
+			popGadgets->popEnter();
+			if(_popCurrent&&_popCurrent!=popGadgets)
+				_popCurrent->popExit();
+			_popCurrent = popGadgets;
+			if(_popCurrent2&&_popCurrent2!=nullptr)
+				_popCurrent2->popExit();
+			_popCurrent2 = nullptr;
+		}
+	});
+
+
 
 	PopMenu* popPause = PopMenu::create();
 	popPause->addButton("Pause", nullptr);
@@ -381,6 +452,13 @@ void MenuLayer::addUI()
 	});
 
 	popPause->popEnter();
+
+	PopMenu* popController = PopMenu::create();
+	popController->addSlider("Controller00");
+	popController->setPosition(origin.x , origin.y);
+	popController->setIsPopDown(false);
+	popController->popEnter();
+	this->addChild(popController);
 
 }
 

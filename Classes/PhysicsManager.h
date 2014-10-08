@@ -18,7 +18,16 @@ public:
 		ADD_CUSTOM_TYPE,
 		ADD_JOINT_TYPE,
 		SET_GRAVITY_TYPE,
-		DELETE_TYPE
+		DELETE_TYPE,
+		NO_COLLIDE_TYPE,
+		COLLIDE_TYPE,
+		ADD_GADGET
+	};
+
+	enum GadgetType{
+		GADGET_INVALID = 0,
+		GADGET_THRUSTER,
+		GADGET_HYDRAULIC
 	};
 
 	static PhysicsManager* getInstance();
@@ -35,6 +44,7 @@ public:
 	void addCustomPolygon(const std::vector<Vec2>& points);
 	void addCircle(Point pos, float radias);
 	void addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3 = Vec2(), const Vec2& pos4 = Vec2());
+	void addNoCollide(const Vec2& pos1, const Vec2& pos2);
 
 	b2Body* getBodyAt(const Vec2& pos);
 	void deleteBodyAt(const Vec2& pos);
@@ -52,11 +62,30 @@ public:
 	b2BodyType getBodyType(int type);
 	void doDelete();
 	b2Joint* getJointForGear(b2Body* body);
+
+	void addGadgetAt(const Vec2& pos);
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
 	CC_SYNTHESIZE(b2JointType, _jointType, JointType);
 	CC_SYNTHESIZE(b2World*, _world, World);
 	CC_SYNTHESIZE(int, _sideNum, SideNum);
+	CC_SYNTHESIZE(GadgetType, _gadgetType, GadgetType);
+
+private:
+	class BodyInfo :public Ref
+	{
+	public:
+		bool init();
+		CREATE_FUNC(BodyInfo);
+		void deleteCollide(b2Body* body);
+		std::vector<b2Body*> collides;
+	};
+
+	class CustomFilter :public b2ContactFilter
+	{
+	public:
+		bool ShouldCollide(b2Fixture* fixtureA, b2Fixture* fixtureB);
+	};
 
 private:
 	static PhysicsManager* _physicsManager;
@@ -99,6 +128,10 @@ private:
 	std::vector<b2Joint*> _jointDelete;
 	std::vector<b2Body*> _bodyDelete;
 	float _gearRatio;
+	CustomFilter* _filter;
+	std::vector<b2Body*> _thrusters;
+	int _maxControllerNum;
+	std::vector<float> _controller;
 };
 
 

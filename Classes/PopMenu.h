@@ -22,6 +22,7 @@ public:
 	CC_SYNTHESIZE(float, _popTime, PopTime);
 	CC_SYNTHESIZE_READONLY(bool, _isEntering, IsEntering);
 	CC_SYNTHESIZE_READONLY(bool, _isEntered, IsEntered);
+	CC_SYNTHESIZE(bool, _isPopDown, IsPopDown);
 	CC_SYNTHESIZE(int, _margin, Margin);
 	CC_SYNTHESIZE(int, _maxButtonShown, MaxButtonShown);
 	CC_SYNTHESIZE(float, _maxHeight, MaxHeight);

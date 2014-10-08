@@ -27,6 +27,7 @@ bool PopMenu::init()
 	_maxWidth = 1000;
 	this->setVisible(false);
 //	this->setContentSize(_listView->getContentSize());
+	_isPopDown = true;
 	return true;
 }
 
@@ -210,7 +211,8 @@ void PopMenu::popEnter()
 		return;
 	}
 	auto height = _listView->getContentSize().height;
-	auto move = MoveBy::create(_popTime, Vec2(0, -height - _margin));
+	auto dir = _isPopDown?1:-1;
+	auto move = MoveBy::create(_popTime, dir*Vec2(0, -height - _margin));
 	auto fuc =[&](){
 		this->_isEntering = false;
 		this->_isEntered = true;
@@ -231,7 +233,8 @@ void PopMenu::popExit()
 	if(_isEntered)
 	{
 		auto height = _listView->getContentSize().height;
-		auto move = MoveBy::create(_popTime, Vec2(0, height + _margin));
+		auto dir = _isPopDown?1:-1;
+		auto move = MoveBy::create(_popTime, dir*Vec2(0, height + _margin));
 		auto fuc =[&](){
 			this->_isEntering = false;
 			this->_isEntered = false;
