@@ -7,7 +7,7 @@ _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
 _groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),
 _jointType(b2JointType::e_unknownJoint),_collideConnected(false),_bodyType(0),_toGround(false),
 _pulleyRatio(1),_maxLength(0),_maxForce(0),_maxTorque(0),_gearRatio(1),_filter(nullptr),
-_gadgetType(GadgetType::GADGET_INVALID),_maxControllerNum(10)
+_gadgetType(GadgetType::GADGET_INVALID),_maxControllerNum(10),_wheelJointsUpdated(true)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -476,7 +476,8 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 			wjd.frequencyHz = _frequencyHz;
 			wjd.dampingRatio = _dampingRatio;
 			wjd.collideConnected = _collideConnected;
-			_world->CreateJoint(&wjd);
+			auto wj = _world->CreateJoint(&wjd);
+			_wheelJoints.push_back(wj);
 		}
 		if(_jointType == b2JointType::e_distanceJoint)
 		{
@@ -667,6 +668,16 @@ void PhysicsManager::update(float dt)
 			b2Vec2 worldPoint = body->GetWorldPoint(b2Vec2(0, 0));
 			body->ApplyForce(worldVec2, worldPoint, true);
 		}
+		if(_wheelJointsUpdated)
+		{
+			for(auto joint: _wheelJoints)
+			{
+				auto wj = dynamic_cast<b2WheelJoint*>(joint);
+				if(wj)
+					wj->SetMotorSpeed(_controller[0]*100);
+			}
+			_wheelJointsUpdated = false;
+		}
 		_world->Step(dt, 8, 8);
 	}
 	doDelete(); // do not delete while Step running.
@@ -690,6 +701,14 @@ void PhysicsManager::doDelete()
 				if(joint->GetType() == b2JointType::e_gearJoint)
 				{
 					_world->DestroyJoint(joint);
+				}
+				if(joint->GetType() == b2JointType::e_wheelJoint)
+				{
+					auto wj = std::find(_wheelJoints.begin(),_wheelJoints.end(), joint);
+					if(wj != _wheelJoints.end())
+					{
+						_wheelJoints.erase(wj);
+					}
 				}
 			}
 			for(auto joint : _jointDelete)
@@ -1109,6 +1128,7 @@ void PhysicsManager::setPropertyByName(const std::string& name, float fval)
 		{
 			log("set %s", name.c_str());
 			_controller[num] = fval;
+			_wheelJointsUpdated = true;
 			return;
 		}
 	}

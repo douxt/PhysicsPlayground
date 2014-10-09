@@ -132,6 +132,8 @@ private:
 	std::vector<b2Body*> _thrusters;
 	int _maxControllerNum;
 	std::vector<float> _controller;
+	std::vector<b2Joint*> _wheelJoints;
+	bool _wheelJointsUpdated;
 };
 
 
