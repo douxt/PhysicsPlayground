@@ -3,6 +3,7 @@
 #include "cocos2d.h"
 #include "Box2D\Box2D.h"
 #include "GLES-Render.h"
+#include "sqlite3\include\sqlite3.h"
 
 USING_NS_CC;
 
@@ -64,6 +65,10 @@ public:
 	b2Joint* getJointForGear(b2Body* body);
 
 	void addGadgetAt(const Vec2& pos);
+
+	void save();
+	void load();
+	void loadBody(sqlite3* pdb, int bodyNum, int type, float x, float y,  float angle);
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
 	CC_SYNTHESIZE(b2JointType, _jointType, JointType);

@@ -132,7 +132,7 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 	{
 		auto touchLocation = touch->getLocation();    
 		auto nodePosition = convertToNodeSpace( touchLocation );
-		log("MainScene::onTouchBegan, pos: %f,%f -> %f,%f", touchLocation.x, touchLocation.y, nodePosition.x, nodePosition.y);
+//		log("MainScene::onTouchBegan, pos: %f,%f -> %f,%f", touchLocation.x, touchLocation.y, nodePosition.x, nodePosition.y);
 		struct timeval now;
 		gettimeofday(&now, NULL);
 		auto nowTime = now.tv_sec*1000 + now.tv_usec/1000;
@@ -217,7 +217,7 @@ void MainScene::onTouchEnded(Touch* touch, Event* event)
 		auto touchLocation = touch->getLocation();    
 		auto nodePosition = convertToNodeSpace( touchLocation );
     
-		log("MainScene::onTouchEnded, pos: %f,%f -> %f,%f", touchLocation.x, touchLocation.y, nodePosition.x, nodePosition.y);
+//		log("MainScene::onTouchEnded, pos: %f,%f -> %f,%f", touchLocation.x, touchLocation.y, nodePosition.x, nodePosition.y);
 		PhysicsManager::getInstance()->MouseUp(nodePosition);
 //		MouseUp(b2Vec2(nodePosition.x/PTM_RATIO,nodePosition.y/PTM_RATIO));
 	}
@@ -242,7 +242,7 @@ void MainScene::onTouchMoved(Touch* touch, Event* event)
 			auto touchLocation = touch->getLocation();    
 			auto nodePosition = convertToNodeSpace( touchLocation );
     
-			log("MainScene::onTouchMoved, pos: %f,%f -> %f,%f", touchLocation.x, touchLocation.y, nodePosition.x, nodePosition.y);
+//			log("MainScene::onTouchMoved, pos: %f,%f -> %f,%f", touchLocation.x, touchLocation.y, nodePosition.x, nodePosition.y);
 			PhysicsManager::getInstance()->MouseMove(nodePosition);
 //			MouseMove(b2Vec2(nodePosition.x/PTM_RATIO,nodePosition.y/PTM_RATIO));
 		}
