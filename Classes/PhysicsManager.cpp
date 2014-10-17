@@ -455,13 +455,18 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 {
 	auto body1 = getBodyAt(pos1);
 	auto body2 = getBodyAt(pos2);
+	auto p1 = b2Vec2(pos1.x/PTM_RATIO, pos1.y/PTM_RATIO);
+	auto p2 = b2Vec2(pos2.x/PTM_RATIO, pos2.y/PTM_RATIO);
+	auto p3 = b2Vec2(pos3.x/PTM_RATIO, pos3.y/PTM_RATIO);
+	auto p4 = b2Vec2(pos4.x/PTM_RATIO, pos4.y/PTM_RATIO);
+	addJoint(body1,body2, p1, p2, p3, p4);
+}
 
+void PhysicsManager::addJoint(b2Body* body1, b2Body* body2,const b2Vec2& p1, const b2Vec2& p2, const b2Vec2& p3 , const b2Vec2& p4 )
+{
 	if((body1 || _toGround)&& body2)
 	{
-		auto p1 = b2Vec2(pos1.x/PTM_RATIO, pos1.y/PTM_RATIO);
-		auto p2 = b2Vec2(pos2.x/PTM_RATIO, pos2.y/PTM_RATIO);
-		auto p3 = b2Vec2(pos3.x/PTM_RATIO, pos3.y/PTM_RATIO);
-		auto p4 = b2Vec2(pos4.x/PTM_RATIO, pos4.y/PTM_RATIO);
+
 
 		if(_toGround)
 			body1 = _groundBody;
@@ -1321,7 +1326,30 @@ void PhysicsManager::saveBody()
 
 void PhysicsManager::saveJoint()
 {
-
+	for(auto joint=_world->GetJointList(); joint; joint=joint->GetNext())
+	{
+		auto type = joint->GetType();
+		if(type == b2JointType::e_wheelJoint)
+		{
+			int bodyA = ((BodyInfo*)joint->GetBodyA()->GetUserData())->num;
+			int bodyB = ((BodyInfo*)joint->GetBodyB()->GetUserData())->num;
+			auto wj = dynamic_cast<b2WheelJoint*>(joint);
+			int enableMotor = wj->IsMotorEnabled()?1:0;
+			float motorSpeed = wj->GetMotorSpeed();
+			float maxMotorTorque = wj->GetMaxMotorTorque();
+			float frequencyHz = wj->GetSpringFrequencyHz();
+			float dampingRatio = wj->GetSpringDampingRatio();
+			int collideConnected = wj->GetCollideConnected()?1:0;
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,enableMotor,motorSpeed,maxMotorTorque,\
+						frequencyHz,dampingRatio,collideConnected) values(%d,%d,%d,%d,%d,%f,%f,%f,%f,%d)", _saveNum, type, bodyA,
+						bodyB, enableMotor, motorSpeed, maxMotorTorque, frequencyHz, dampingRatio, collideConnected);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert wheel joint data failed!==>%s",sql->getCString());
+			}
+		}
+	}
 }
 
 void PhysicsManager::clearSave(int saveNum)
@@ -1356,11 +1384,51 @@ void PhysicsManager::load(int loadNum)
 		loadNum = PhysicsManager::getInstance()->getMaxSaveNum(_db);
 	}
 	_saveNum = loadNum;
-	char string[100];
-	sprintf(string,"select num,type,x,y,angle from body where save=%d", _saveNum);
-//	auto sql = String::createWithFormat("select num,type,x,y,angle from body where save=%d", _saveNum);
+
+	loadBody();
+	loadJoint();
+}
+
+void PhysicsManager::loadJoint()
+{
+	auto sql = String::createWithFormat("select type,bodyA,bodyB,enableMotor,motorSpeed,maxMotorTorque,\
+						frequencyHz,dampingRatio,collideConnected from joint where save=%d", _saveNum);
 	sqlite3_stmt* statement;
-	int result=sqlite3_prepare_v2(_db, string, -1, &statement, NULL);
+	int result=sqlite3_prepare_v2(_db, sql->getCString(), -1, &statement, NULL);
+	if(result!=SQLITE_OK)
+	{
+		log("select body data failed!");
+		return;
+	}
+	while(sqlite3_step(statement) == SQLITE_ROW)
+	{
+		int type =  sqlite3_column_int(statement, 0);
+		_jointType = b2JointType(type);
+		if(_jointType == b2JointType::e_wheelJoint)
+		{
+			int bodyANum = sqlite3_column_int(statement, 1);
+			int bodyBNum = sqlite3_column_int(statement, 2);
+			_enableMotor = sqlite3_column_int(statement, 3);
+			_motorSpeed = sqlite3_column_double(statement, 4);
+			_maxMotorTorque = sqlite3_column_double(statement, 5);
+			_frequencyHz = sqlite3_column_double(statement, 6);
+			_dampingRatio = sqlite3_column_double(statement, 7);
+			_collideConnected = sqlite3_column_int(statement, 8);
+			b2Body* bodyA = _bodies[bodyANum];
+			b2Body* bodyB = _bodies[bodyBNum];
+			addJoint(bodyA, bodyB, bodyA->GetPosition(), bodyB->GetPosition());
+
+		}
+	}
+}
+
+void PhysicsManager::loadBody()
+{
+//	char string[100];
+//	sprintf(string,"select num,type,x,y,angle from body where save=%d", _saveNum);
+	auto sql = String::createWithFormat("select num,type,x,y,angle from body where save=%d", _saveNum);
+	sqlite3_stmt* statement;
+	int result=sqlite3_prepare_v2(_db, sql->getCString(), -1, &statement, NULL);
 	if(result!=SQLITE_OK)
 	{
 		log("select body data failed!");
@@ -1374,7 +1442,7 @@ void PhysicsManager::load(int loadNum)
 		float y = sqlite3_column_double(statement, 3);
 		float angle = sqlite3_column_double(statement, 4);
 		log("body:%d,%d,%f,%f,%f",bodyNum, type, x, y, angle);
-		loadBody(_db, loadNum, bodyNum, type, x, y, angle);
+		loadOneBody(_db, _saveNum, bodyNum, type, x, y, angle);
 	}
 }
 
@@ -1395,7 +1463,7 @@ int PhysicsManager::getMaxSaveNum(sqlite3* pdb)
 	return saveNum;
 }
 
-void PhysicsManager::loadBody(sqlite3* pdb, int save, int bodyNum, int type, float x, float y,  float angle)
+void PhysicsManager::loadOneBody(sqlite3* pdb, int save, int bodyNum, int type, float x, float y,  float angle)
 {
 	b2BodyDef bodydef;
 	bodydef.type = b2BodyType(type);
@@ -1502,13 +1570,14 @@ void PhysicsManager::createTables(sqlite3* pdb)
 	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
 	if(result!=SQLITE_OK)
 		log("create table failed");
-
-	//sql="create table if not exist edge_shape(ID integer primary key autoincrement,save integer,body integer,fixture integer,v1x float, v1y float,v2x float,v2y float)";
-	//result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
-	//if(result!=SQLITE_OK)
-	//	log("create table failed");
+	log("create table failed");
 
 	sql="create table if not exists poly_shape(ID integer primary key autoincrement,save integer,body integer,fixture integer,vx float, vy float)";
+	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
+	if(result!=SQLITE_OK)
+		log("create table failed");
+
+	sql="create table if not exists joint(ID integer primary key autoincrement,save integer,type integer,bodyA integer, bodyB integer, enableMotor bit,motorSpeed float, maxMotorTorque float, frequencyHz float, dampingRatio float, collideConnected bit)";
 	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
 	if(result!=SQLITE_OK)
 		log("create table failed");

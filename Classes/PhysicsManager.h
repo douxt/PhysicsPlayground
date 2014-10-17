@@ -45,6 +45,7 @@ public:
 	void addCustomPolygon(const std::vector<Vec2>& points);
 	void addCircle(Point pos, float radias);
 	void addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3 = Vec2(), const Vec2& pos4 = Vec2());
+	void addJoint(b2Body* body1, b2Body* body2, const b2Vec2& pos1, const b2Vec2& pos2,const b2Vec2& pos3 = b2Vec2(), const b2Vec2& pos4 = b2Vec2());
 	void addNoCollide(const Vec2& pos1, const Vec2& pos2);
 
 	b2Body* getBodyAt(const Vec2& pos);
@@ -68,7 +69,9 @@ public:
 
 	void save();
 	void load(int loadNum = -1);
-	void loadBody(sqlite3* pdb,int save, int bodyNum, int type, float x, float y,  float angle);
+	void loadOneBody(sqlite3* pdb,int save, int bodyNum, int type, float x, float y,  float angle);
+	void loadBody();
+	void loadJoint();
 
 	int getMaxSaveNum(sqlite3* pdb);
 	void createTables(sqlite3* pdb);
