@@ -426,6 +426,7 @@ void MenuLayer::addUI()
 	popPause->addButton("Pause", nullptr);
 	popPause->addButton("Gravity", nullptr);
 	popPause->addButton("Delete", nullptr);
+	popPause->addButton("New", nullptr);
 	popPause->addButton("Save", nullptr);
 	popPause->addButton("Load", nullptr);
 	popPause->setPosition(origin.x, origin.y + visibleSize.height);
@@ -451,6 +452,10 @@ void MenuLayer::addUI()
 	popPause->setCallback("Delete",[&](){
 		PhysicsManager::getInstance()->setTouchType(PhysicsManager::DELETE_TYPE);
 		_label->setString("Mode:Delete body");
+	});
+
+	popPause->setCallback("New",[&](){
+		PhysicsManager::getInstance()->newSave();
 	});
 
 	popPause->setCallback("Save",[&](){

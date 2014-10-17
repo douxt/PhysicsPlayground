@@ -7,7 +7,8 @@ _touchType(TouchType::MOVE_TYPE),_mouseWorld(b2Vec2(0, 0)),_mouseJoint(nullptr),
 _groundBody(nullptr),_car(nullptr),_wheel(nullptr),_movingBody(nullptr),
 _jointType(b2JointType::e_unknownJoint),_collideConnected(false),_bodyType(0),_toGround(false),
 _pulleyRatio(1),_maxLength(0),_maxForce(0),_maxTorque(0),_gearRatio(1),_filter(nullptr),
-_gadgetType(GadgetType::GADGET_INVALID),_maxControllerNum(10),_wheelJointsUpdated(true)
+_gadgetType(GadgetType::GADGET_INVALID),_maxControllerNum(10),_wheelJointsUpdated(true),
+_saveNum(-1),_db(nullptr),_bodyNum(0)
 {}
 
 PhysicsManager::~PhysicsManager()
@@ -20,7 +21,7 @@ PhysicsManager::~PhysicsManager()
 		CC_SAFE_RELEASE(info);
 		bl = bNext;
 	}
-
+	sqlite3_close(_db);
 	delete _world;
 //	_world = nullptr;
 	delete _debugDraw;
@@ -130,16 +131,23 @@ bool PhysicsManager::init()
 		_controller.push_back(0);
 	}
 
+	std::string path = FileUtils::getInstance()->getWritablePath() + "save.db";
+
+//	std::string sql;
+	int result;
+	result = sqlite3_open(path.c_str(), &_db);
+	if(result!=SQLITE_OK)
+	{
+		log("open db failed, number %d", result);
+	}
+
+	createTables(_db);
+
 	return true;
 }
 
-void PhysicsManager::addRegularPolygon(Point pos)
+b2Body* PhysicsManager::createBody()
 {
-	if(_sideNum == 0)
-	{
-		addCircle(pos, _size);
-		return;
-	}
 	b2BodyDef bodydef;
 	int bt = _bodyType;
 	bodydef.type = getBodyType(bt);
@@ -149,9 +157,22 @@ void PhysicsManager::addRegularPolygon(Point pos)
 	body->SetLinearDamping(0);
 	body->SetAngularDamping(0);
 
+	_bodies[_bodyNum] = body;
 	BodyInfo* bodyInfo = BodyInfo::create();
+	bodyInfo->num = _bodyNum++;
 	bodyInfo->retain();
 	body->SetUserData(bodyInfo);
+	return body;
+}
+
+void PhysicsManager::addRegularPolygon(Point pos)
+{
+	if(_sideNum == 0)
+	{
+		addCircle(pos, _size);
+		return;
+	}
+	auto body = createBody();
 //	body->~b2Body();
 	int num = _sideNum;
 	auto radias =  _size/PTM_RATIO;
@@ -183,18 +204,7 @@ void PhysicsManager::addRegularPolygon(Point pos)
 
 void PhysicsManager::addCircle(Point pos, float radias)
 {
-	b2BodyDef bodyDef;
-	int bt = _bodyType;
-//	bodyDef.type = b2_dynamicBody;
-	bodyDef.type = getBodyType(bt);
-	auto body = _world->CreateBody(&bodyDef);
-	body->SetSleepingAllowed(true);
-	body->SetLinearDamping(0);
-	body->SetAngularDamping(0);
-
-	BodyInfo* bodyInfo = BodyInfo::create();
-	bodyInfo->retain();
-	body->SetUserData(bodyInfo);
+	auto body = createBody();
 
 	b2CircleShape shape;
 	shape.m_radius = radias / PTM_RATIO;
@@ -213,17 +223,7 @@ void PhysicsManager::addCircle(Point pos, float radias)
 
 void PhysicsManager::addCustomPolygon(const std::vector<Vec2>& points)
 {
-	b2BodyDef bodydef;
-//	bodydef.type = b2_dynamicBody;
-	int bt = _bodyType;
-	bodydef.type = getBodyType(bt);
-	auto body = _world->CreateBody(&bodydef);
-	body->SetSleepingAllowed(true);
-	body->SetLinearDamping(0);
-	body->SetAngularDamping(0);
-	BodyInfo* bodyInfo = BodyInfo::create();
-	bodyInfo->retain();
-	body->SetUserData(bodyInfo);
+	auto body = createBody();
 
 	int num = points.size();
 
@@ -716,13 +716,22 @@ void PhysicsManager::doDelete()
 					_world->DestroyJoint(joint);
 			}
 			auto info =(BodyInfo*)body->GetUserData();
-			auto collides = info->collides;
-			for(auto collide : collides)
+			if(info)
 			{
-				auto info = (BodyInfo*)collide->GetUserData();
-				info->deleteCollide(body);
+				auto collides = info->collides;
+				for(auto collide : collides)
+				{
+					auto info = (BodyInfo*)collide->GetUserData();
+					info->deleteCollide(body);
+				}
+				delete info;
 			}
-			_world->DestroyBody(body);
+			if(body->GetType()==b2BodyType::b2_dynamicBody)
+			{
+				_world->DestroyBody(body);
+			}
+			
+
 		}
 		_bodyDelete.clear();
 	}
@@ -1171,11 +1180,16 @@ bool PhysicsManager::CustomFilter::ShouldCollide(b2Fixture* fixtureA, b2Fixture*
 {
 	auto bodyA = fixtureA->GetBody();
 	auto bodyB = fixtureB->GetBody();
-	auto bodyInfo = (BodyInfo*)bodyA->GetUserData();
-	if(bodyInfo)
+	auto bodyInfoA = (BodyInfo*)bodyA->GetUserData();
+	auto bodyInfoB = (BodyInfo*)bodyB->GetUserData();
+	if(bodyInfoA)
 	{
-		auto& collide = bodyInfo->collides;
-		return std::find(collide.begin(), collide.end(), bodyB) == collide.end();
+		if(bodyInfoB)
+		{
+			auto& collide = bodyInfoA->collides;
+			return std::find(collide.begin(), collide.end(), bodyB) == collide.end();
+		}
+		return true;
 	}
 	return b2ContactFilter::ShouldCollide(fixtureA, fixtureB);
 }
@@ -1231,81 +1245,51 @@ void PhysicsManager::addGadgetAt(const Vec2& pos)
 
 void PhysicsManager::save()
 {
-	sqlite3 *pdb = NULL;
-	std::string path = FileUtils::getInstance()->getWritablePath() + "save.db";
-
-	std::string sql;
-	int result;
-	result = sqlite3_open(path.c_str(), &pdb);
-	if(result!=SQLITE_OK)
+	if(_saveNum == -1)
 	{
-		log("open db failed, number %d", result);
+		_saveNum = getMaxSaveNum(_db);
+		if(_saveNum == -1)
+		{
+			_saveNum=1;
+		}
+		else
+		{
+			_saveNum++;
+		}		
+	}
+	else
+	{
+		clearSave(_saveNum);
 	}
 
-	sql="drop table body";
-	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);//2
-	if(result!=SQLITE_OK)
-		log("drop table failed");
+	saveBody();
+	saveJoint();
+}
 
-	sql="drop table fixture";
-	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);//2
-	if(result!=SQLITE_OK)
-		log("drop table failed");
-
-	sql="drop table edge_shape";
-	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);//2
-	if(result!=SQLITE_OK)
-		log("drop table failed");
-
-	sql="drop table poly_shape";
-	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);//2
-	if(result!=SQLITE_OK)
-		log("drop table failed");
-
-	sql="create table body(ID integer primary key autoincrement,save integer,num integer,type integer,x float, y float,angle float)";
-	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);//2
-	if(result!=SQLITE_OK)
-		log("create table failed");
-
-	sql="create table fixture(ID integer primary key autoincrement,save integer,body integer,num integer,density float, friction float,restitution float,shape integer,radius float)";
-	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);//2
-	if(result!=SQLITE_OK)
-		log("create table failed");
-
-	sql="create table edge_shape(ID integer primary key autoincrement,save integer,body integer,fixture integer,v1x float, v1y float,v2x float,v2y float)";
-	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);//2
-	if(result!=SQLITE_OK)
-		log("create table failed");
-
-	sql="create table poly_shape(ID integer primary key autoincrement,save integer,body integer,fixture integer,vx float, vy float)";
-	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);//2
-	if(result!=SQLITE_OK)
-		log("create table failed");
-
-	int bodyNum = 0;
-	for(auto bl = _world->GetBodyList(); bl; bl = bl->GetNext())
+void PhysicsManager::saveBody()
+{
+	for(auto bl = _world->GetBodyList(); bl&&bl->GetUserData(); bl = bl->GetNext())
 	{
 		auto pos = bl->GetPosition();
 		auto angle = bl->GetAngle();
 		auto type = bl->GetType();
-
-		auto sql = String::createWithFormat("insert into body(save,num,type,x,y,angle) values(1,%d,%d,%f,%f,%f)", bodyNum, type, pos.x, pos.y, angle);
-		result=sqlite3_exec(pdb,sql->getCString(),NULL,NULL,NULL);//3
-		if(result!=SQLITE_OK)
-		log("insert body data failed!");
-
+		auto bodyInfo = static_cast<BodyInfo*>(bl->GetUserData());
+		auto bodyNum = bodyInfo->num;
+		
+		bool hasFixture = false;
 		int fixtureNum = 0;
 		for(auto fl = bl->GetFixtureList(); fl; fl =  fl->GetNext())
 		{
+			hasFixture = true;
 			auto density = fl->GetDensity();
 			auto friction = fl->GetFriction();
 			auto restitution = fl->GetRestitution();
 			auto shape = fl->GetShape();
 			auto type = shape->GetType();
 			auto radius = shape->m_radius;
-			auto sql = String::createWithFormat("insert into fixture(save,body,num,density,friction,restitution,shape,radius) values(1,%d,%d,%f,%f,%f,%d,%f)", bodyNum, fixtureNum, density, friction, restitution, type, radius);
+			auto sql = String::createWithFormat("insert into fixture(save,body,num,density,friction,restitution,shape,radius) values(%d,%d,%d,%f,%f,%f,%d,%f)",_saveNum,bodyNum, fixtureNum, density, friction, restitution, type, radius);
 
-			result=sqlite3_exec(pdb,sql->getCString(),NULL,NULL,NULL);//3
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);//3
 			if(result!=SQLITE_OK)
 			log("insert fixture data failed!");
 
@@ -1314,88 +1298,72 @@ void PhysicsManager::save()
 				auto edge_shape = dynamic_cast<b2PolygonShape*>(shape);
 				for(int i=0;i<edge_shape->m_count;i++)
 				{
-					auto sql = String::createWithFormat("insert into poly_shape(save,body,fixture,vx,vy) values(1,%d,%d,%f,%f)", bodyNum, fixtureNum, edge_shape->m_vertices[i].x, edge_shape->m_vertices[i].y);
-					result=sqlite3_exec(pdb,sql->getCString(),NULL,NULL,NULL);//3
+					auto sql = String::createWithFormat("insert into poly_shape(save,body,fixture,vx,vy) values(%d,%d,%d,%f,%f)", _saveNum, bodyNum, fixtureNum, edge_shape->m_vertices[i].x, edge_shape->m_vertices[i].y);
+					result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);//3
 					if(result!=SQLITE_OK)
 					log("insert poly_shape data failed!");
 				}
 			}
 			fixtureNum++;
-
-			//if(type == b2Shape::e_edge)
-			//{
-			//	log("inserting edge_shape...");
-			//	auto edge_shape = dynamic_cast<b2EdgeShape*>(shape);
-			//	
-			//	auto sql = String::createWithFormat("insert into edge_shape(save,body,fixture,v1x,v1y,v2x,v2y) values(1,%d,%d,%f,%f,%f,%f)", 
-			//						bodyNum, fixtureNum,edge_shape->m_vertex1.x, edge_shape->m_vertex1.y, edge_shape->m_vertex2.x, 
-			//						edge_shape->m_vertex2.y);
-			//	result=sqlite3_exec(pdb,sql->getCString(),NULL,NULL,NULL);//3
-			//	if(result!=SQLITE_OK)
-			//	log("insert edge_shape data failed!");
-			//	break;
-			//}
-			//switch (type)
-			//{
-			//case b2Shape::e_circle:
-			//	break;
-			//case b2Shape::e_edge:
-			//	auto edge_shape = dynamic_cast<b2EdgeShape*>(shape);
-			//	
-			//	auto sql = String::createWithFormat("insert into fixture(save,body,fixture,v1x,v1y,v2x,v2y) values(1,%d,%d,%f,%f,%f,%f)", 
-			//						bodyNum, fixtureNum,edge_shape->m_vertex1.x, edge_shape->m_vertex1.y, edge_shape->m_vertex2.x, 
-			//						edge_shape->m_vertex2.y);
-			//	result=sqlite3_exec(pdb,sql->getCString(),NULL,NULL,NULL);//3
-			//	if(result!=SQLITE_OK)
-			//	log("insert edge_shape data failed!");
-			//	break;
-			//case b2Shape::e_polygon:
-			//	break;
-			//case b2Shape::e_chain:
-			//	break;
-			//case b2Shape::e_typeCount:
-			//	break;
-			//default:
-			//	break;
-			//}
-
 		}
-		bodyNum++;
-	}
-	
-	//sql="insert into student  values(2,'student2','female')";
-	//result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
-	//if(result!=SQLITE_OK)
-	//	log("insert data failed!");
- //
-	//sql="insert into student  values(3,'student3','male')";
-	//result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
-	//if(result!=SQLITE_OK)
-	//	log("insert data failed!");
+		if(hasFixture)
+		{
+			auto sql = String::createWithFormat("insert into body(save,num,type,x,y,angle) values(%d,%d,%d,%f,%f,%f)",_saveNum,bodyNum, type, pos.x, pos.y, angle);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert body data failed!==>%s",sql->getCString());
+			}
+		}
 
-	sqlite3_close(pdb);
+	}	
 }
 
-void PhysicsManager::load()
+void PhysicsManager::saveJoint()
 {
-	purgeInstance();
-	PhysicsManager::getInstance();
-	sqlite3 *pdb = NULL;
-	std::string path = FileUtils::getInstance()->getWritablePath() + "save.db";
 
-	std::string sql;
-	int result;
-	result = sqlite3_open(path.c_str(), &pdb);
-	if(result!=SQLITE_OK)
+}
+
+void PhysicsManager::clearSave(int saveNum)
+{
+		char* error;
+		auto sql = String::createWithFormat("delete from body where save=%d", saveNum);
+		int result=sqlite3_exec(_db, sql->getCString(), NULL, NULL, &error);
+		if(result!=SQLITE_OK)
+		{
+			log("delete body data failed! %s", error);
+		}
+		sql = String::createWithFormat("delete from fixture where save=%d", saveNum);
+		result=sqlite3_exec(_db, sql->getCString(), NULL, NULL, NULL);
+		if(result!=SQLITE_OK)
+		{
+			log("delete fixture data failed! %s", sql->getCString());
+		}
+		sql = String::createWithFormat("delete from poly_shape where save=%d", saveNum);
+		result=sqlite3_exec(_db, sql->getCString(), NULL, NULL, NULL);
+		if(result!=SQLITE_OK)
+		{
+			log("delete poly_shape data failed! %s", sql->getCString());
+		}
+}
+void PhysicsManager::load(int loadNum)
+{
+//	PhysicsManager::purgeInstance();
+	clearWorld();
+	_bodies.clear();
+	if(loadNum == -1)
 	{
-		log("open db failed, number %d", result);
+		loadNum = PhysicsManager::getInstance()->getMaxSaveNum(_db);
 	}
-	sql = "select num,type,x,y,angle from body where save=1";
+	_saveNum = loadNum;
+	char string[100];
+	sprintf(string,"select num,type,x,y,angle from body where save=%d", _saveNum);
+//	auto sql = String::createWithFormat("select num,type,x,y,angle from body where save=%d", _saveNum);
 	sqlite3_stmt* statement;
-	result=sqlite3_prepare_v2(pdb, sql.c_str(), -1, &statement, NULL);
+	int result=sqlite3_prepare_v2(_db, string, -1, &statement, NULL);
 	if(result!=SQLITE_OK)
 	{
-		log("insert fixture data failed!");
+		log("select body data failed!");
 		return;
 	}
 	while(sqlite3_step(statement) == SQLITE_ROW)
@@ -1406,11 +1374,28 @@ void PhysicsManager::load()
 		float y = sqlite3_column_double(statement, 3);
 		float angle = sqlite3_column_double(statement, 4);
 		log("body:%d,%d,%f,%f,%f",bodyNum, type, x, y, angle);
-		loadBody(pdb, bodyNum, type, x, y, angle);
+		loadBody(_db, loadNum, bodyNum, type, x, y, angle);
 	}
 }
 
-void PhysicsManager::loadBody(sqlite3* pdb, int bodyNum, int type, float x, float y,  float angle)
+int PhysicsManager::getMaxSaveNum(sqlite3* pdb)
+{
+	std::string sql = "select max(save) from body";
+	sqlite3_stmt* statement;
+	int result=sqlite3_prepare_v2(_db, sql.c_str(), -1, &statement, NULL);
+	if(result!=SQLITE_OK)
+	{
+		log("select max(save)  failed!");
+	}
+	int saveNum = -1;
+	if(sqlite3_step(statement) == SQLITE_ROW)
+	{
+		saveNum = sqlite3_column_int(statement, 0);
+	}
+	return saveNum;
+}
+
+void PhysicsManager::loadBody(sqlite3* pdb, int save, int bodyNum, int type, float x, float y,  float angle)
 {
 	b2BodyDef bodydef;
 	bodydef.type = b2BodyType(type);
@@ -1421,10 +1406,15 @@ void PhysicsManager::loadBody(sqlite3* pdb, int bodyNum, int type, float x, floa
 	body->SetAngularDamping(0);
 
 	BodyInfo* bodyInfo = BodyInfo::create();
+	bodyInfo->num = bodyNum;
+	if(_bodyNum <= bodyNum)
+	{
+		_bodyNum = bodyNum+1;
+	}
 	bodyInfo->retain();
 	body->SetUserData(bodyInfo);
-
-	auto sql = String::createWithFormat("select num,density,friction,restitution,shape,radius from fixture where body=%d", bodyNum);
+	_bodies[bodyNum] = body;
+	auto sql = String::createWithFormat("select num,density,friction,restitution,shape,radius from fixture where body=%d and save=%d", bodyNum, save);
 	sqlite3_stmt* statement;
 	int result=sqlite3_prepare_v2(pdb, sql->getCString(), -1, &statement, NULL);
 	if(result!=SQLITE_OK)
@@ -1459,7 +1449,7 @@ void PhysicsManager::loadBody(sqlite3* pdb, int bodyNum, int type, float x, floa
 			{
 				b2PolygonShape shape;
 				b2Vec2 points[16];
-				auto sql = String::createWithFormat("select vx,vy from poly_shape where body=%d and fixture=%d", bodyNum, fixtureNum);
+				auto sql = String::createWithFormat("select vx,vy from poly_shape where body=%d and fixture=%d and save=%d", bodyNum, fixtureNum, save);
 				sqlite3_stmt* statement;
 				int result=sqlite3_prepare_v2(pdb, sql->getCString(), -1, &statement, NULL);
 				if(result!=SQLITE_OK)
@@ -1499,4 +1489,44 @@ void PhysicsManager::loadBody(sqlite3* pdb, int bodyNum, int type, float x, floa
 			y),
 			angle);
 	}
+}
+
+void PhysicsManager::createTables(sqlite3* pdb)
+{
+	std::string sql="create table if not exists body(ID integer primary key autoincrement,save integer,num integer,type integer,x float, y float,angle float)";
+	int result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
+	if(result!=SQLITE_OK)
+		log("create table failed");
+
+	sql="create table if not exists fixture(ID integer primary key autoincrement,save integer,body integer,num integer,density float, friction float,restitution float,shape integer,radius float)";
+	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
+	if(result!=SQLITE_OK)
+		log("create table failed");
+
+	//sql="create table if not exist edge_shape(ID integer primary key autoincrement,save integer,body integer,fixture integer,v1x float, v1y float,v2x float,v2y float)";
+	//result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
+	//if(result!=SQLITE_OK)
+	//	log("create table failed");
+
+	sql="create table if not exists poly_shape(ID integer primary key autoincrement,save integer,body integer,fixture integer,vx float, vy float)";
+	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
+	if(result!=SQLITE_OK)
+		log("create table failed");
+
+}
+
+void PhysicsManager::clearWorld()
+{
+	for(auto bd = _world->GetBodyList(); bd; bd = bd->GetNext())
+	{
+		_bodyDelete.push_back(bd);
+	}
+}
+
+void PhysicsManager::newSave()
+{
+	clearWorld();
+	_saveNum = -1;
+	_bodyNum = 0;
+	_bodies.clear();
 }

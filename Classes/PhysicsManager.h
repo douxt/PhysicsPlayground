@@ -67,8 +67,18 @@ public:
 	void addGadgetAt(const Vec2& pos);
 
 	void save();
-	void load();
-	void loadBody(sqlite3* pdb, int bodyNum, int type, float x, float y,  float angle);
+	void load(int loadNum = -1);
+	void loadBody(sqlite3* pdb,int save, int bodyNum, int type, float x, float y,  float angle);
+
+	int getMaxSaveNum(sqlite3* pdb);
+	void createTables(sqlite3* pdb);
+	void clearWorld();
+	void newSave();
+	void clearSave(int saveNum);
+	b2Body* createBody();
+	void saveBody();
+	void saveJoint();
+
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
 	CC_SYNTHESIZE(b2JointType, _jointType, JointType);
@@ -84,6 +94,7 @@ private:
 		CREATE_FUNC(BodyInfo);
 		void deleteCollide(b2Body* body);
 		std::vector<b2Body*> collides;
+		int num;
 	};
 
 	class CustomFilter :public b2ContactFilter
@@ -139,6 +150,10 @@ private:
 	std::vector<float> _controller;
 	std::vector<b2Joint*> _wheelJoints;
 	bool _wheelJointsUpdated;
+	int _saveNum;
+	sqlite3* _db;
+	int _bodyNum;
+	std::unordered_map<int, b2Body*> _bodies;
 };
 
 
