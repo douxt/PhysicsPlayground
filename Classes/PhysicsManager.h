@@ -3,7 +3,7 @@
 #include "cocos2d.h"
 #include "Box2D\Box2D.h"
 #include "GLES-Render.h"
-#include "sqlite3\include\sqlite3.h"
+#include "sqlite3.h"
 
 USING_NS_CC;
 

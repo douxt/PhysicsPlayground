@@ -62,7 +62,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LibraryPath>$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v7.1A\lib;$(LibraryPath)</LibraryPath>
-    <LibraryWPath>E:\Projects\PhysicsPlayground\cocos2d\external\sqlite3\libraries\win32\;$(LibraryWPath)</LibraryWPath>
+    <LibraryWPath>$(LibraryWPath)</LibraryWPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LibraryPath>$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v7.1A\lib;$(LibraryPath)</LibraryPath>
@@ -141,6 +141,7 @@ xcopy /Y /Q "$(EngineRoot)external\websockets\prebuilt\win32\*.*" "$(OutDir)"</C
     <ClCompile Include="..\Classes\MenuLayer.cpp" />
     <ClCompile Include="..\Classes\PhysicsManager.cpp" />
     <ClCompile Include="..\Classes\PopMenu.cpp" />
+    <ClCompile Include="..\Classes\sqlite3.c" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -151,6 +152,7 @@ xcopy /Y /Q "$(EngineRoot)external\websockets\prebuilt\win32\*.*" "$(OutDir)"</C
     <ClInclude Include="..\Classes\MenuLayer.h" />
     <ClInclude Include="..\Classes\PhysicsManager.h" />
     <ClInclude Include="..\Classes\PopMenu.h" />
+    <ClInclude Include="..\Classes\sqlite3.h" />
     <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>
