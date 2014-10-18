@@ -6,6 +6,7 @@ A tribute to Garry's Mod.
 
 It is advised to create a new project and then copy Classes and Resources folder into it.
 
-
+Demo:
+<img src="https://github.com/douxt/PhysicsPlayground/blob/master/Resources/car.gif">
 
 
