@@ -78,6 +78,11 @@ bool PhysicsManager::init()
 
 	b2BodyDef bodyDef;
 	_groundBody = _world->CreateBody(&bodyDef);
+	BodyInfo* bodyInfo = new BodyInfo();
+	bodyInfo->num = -1;
+	bodyInfo->retain();
+	_groundBody->SetUserData(bodyInfo);
+
 	b2EdgeShape shape;
 	shape.Set(b2Vec2(-40.0f, 0.0f), b2Vec2(40.0f, 0.0f));
 	
@@ -462,7 +467,7 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 	addJoint(body1,body2, p1, p2, p3, p4);
 }
 
-void PhysicsManager::addJoint(b2Body* body1, b2Body* body2,const b2Vec2& p1, const b2Vec2& p2, const b2Vec2& p3 , const b2Vec2& p4 )
+void PhysicsManager::addJoint(b2Body* body1, b2Body* body2,const b2Vec2& p1, const b2Vec2& p2, const b2Vec2& p3 , const b2Vec2& p4, const b2Vec2& p5 )
 {
 	if((body1 || _toGround)&& body2)
 	{
@@ -510,15 +515,8 @@ void PhysicsManager::addJoint(b2Body* body1, b2Body* body2,const b2Vec2& p1, con
 		{
 			b2PrismaticJointDef pjd;
 			b2Vec2 axis;
-			if(_toGround)
-			{
-				axis = b2Vec2(0, 1);
-			}else
-			{
-				auto delta = p1 - p2;
-				auto nor = delta.Normalize();
-				axis = -b2Vec2(delta.x/nor, delta.y/nor);
-			}
+			auto delta = p4 - p3;
+			axis = b2Vec2(delta.x, delta.y);
 
 			pjd.Initialize(body1, body2, p3, axis);
 			pjd.upperTranslation = _upperTranslation;
@@ -528,6 +526,11 @@ void PhysicsManager::addJoint(b2Body* body1, b2Body* body2,const b2Vec2& p1, con
 			pjd.maxMotorForce = _maxMotorForce;
 			pjd.enableMotor = _enableMotor;
 			pjd.collideConnected = _collideConnected;
+			if(abs(p5.x) > 1e-3 || abs(p5.y) >1e-3)
+			{
+				pjd.localAnchorB = p5;
+			}
+			
 			_world->CreateJoint(&pjd);
 		}
 		if(_jointType == b2JointType::e_pulleyJoint)
@@ -723,7 +726,7 @@ void PhysicsManager::doDelete()
 			auto info =(BodyInfo*)body->GetUserData();
 			if(info)
 			{
-				auto collides = info->collides;
+				auto& collides = info->collides;
 				for(auto collide : collides)
 				{
 					auto info = (BodyInfo*)collide->GetUserData();
@@ -778,19 +781,23 @@ void PhysicsManager::setPropertyByNameBool(const std::string &name, bool bval)
 	if("EnableMotor" == name)
 	{
 		_enableMotor = bval;
+		return;
 	}
 
 	if("CollideConnected" == name)
 	{
 		_collideConnected = bval;
+		return;
 	}
 	if("EnableLimit" == name)
 	{
 		_enableLimit = bval;
+		return;
 	}
 	if("ToGround" == name)
 	{
 		_toGround = bval;
+		return;
 	}
 	log("No such property as: %s, nothing set", name.c_str());
 }
@@ -1189,12 +1196,11 @@ bool PhysicsManager::CustomFilter::ShouldCollide(b2Fixture* fixtureA, b2Fixture*
 	auto bodyInfoB = (BodyInfo*)bodyB->GetUserData();
 	if(bodyInfoA)
 	{
-		if(bodyInfoB)
+		auto& collide = bodyInfoA->collides;
+		if(collide.size()>0 && bodyInfoB)
 		{
-			auto& collide = bodyInfoA->collides;
 			return std::find(collide.begin(), collide.end(), bodyB) == collide.end();
 		}
-		return true;
 	}
 	return b2ContactFilter::ShouldCollide(fixtureA, fixtureB);
 }
@@ -1280,36 +1286,42 @@ void PhysicsManager::saveBody()
 		auto type = bl->GetType();
 		auto bodyInfo = static_cast<BodyInfo*>(bl->GetUserData());
 		auto bodyNum = bodyInfo->num;
-		
+		if(bodyInfo==nullptr || bodyNum == -1)
+		{
+			continue;
+		}
 		bool hasFixture = false;
 		int fixtureNum = 0;
 		for(auto fl = bl->GetFixtureList(); fl; fl =  fl->GetNext())
 		{
-			hasFixture = true;
-			auto density = fl->GetDensity();
-			auto friction = fl->GetFriction();
-			auto restitution = fl->GetRestitution();
-			auto shape = fl->GetShape();
-			auto type = shape->GetType();
-			auto radius = shape->m_radius;
-			auto sql = String::createWithFormat("insert into fixture(save,body,num,density,friction,restitution,shape,radius) values(%d,%d,%d,%f,%f,%f,%d,%f)",_saveNum,bodyNum, fixtureNum, density, friction, restitution, type, radius);
-
-			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);//3
-			if(result!=SQLITE_OK)
-			log("insert fixture data failed!");
-
-			if(type == b2Shape::e_polygon)
+			if(type == b2Shape::e_polygon ||type == b2Shape::e_circle)
 			{
-				auto edge_shape = dynamic_cast<b2PolygonShape*>(shape);
-				for(int i=0;i<edge_shape->m_count;i++)
+				hasFixture = true;
+				auto density = fl->GetDensity();
+				auto friction = fl->GetFriction();
+				auto restitution = fl->GetRestitution();
+				auto shape = fl->GetShape();
+				auto type = shape->GetType();
+				auto radius = shape->m_radius;
+				auto sql = String::createWithFormat("insert into fixture(save,body,num,density,friction,restitution,shape,radius) values(%d,%d,%d,%f,%f,%f,%d,%f)",_saveNum,bodyNum, fixtureNum, density, friction, restitution, type, radius);
+
+				int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);//3
+				if(result!=SQLITE_OK)
+				log("insert fixture data failed!");
+
+				if(type == b2Shape::e_polygon)
 				{
-					auto sql = String::createWithFormat("insert into poly_shape(save,body,fixture,vx,vy) values(%d,%d,%d,%f,%f)", _saveNum, bodyNum, fixtureNum, edge_shape->m_vertices[i].x, edge_shape->m_vertices[i].y);
-					result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);//3
-					if(result!=SQLITE_OK)
-					log("insert poly_shape data failed!");
+					auto edge_shape = dynamic_cast<b2PolygonShape*>(shape);
+					for(int i=0;i<edge_shape->m_count;i++)
+					{
+						auto sql = String::createWithFormat("insert into poly_shape(save,body,fixture,vx,vy) values(%d,%d,%d,%f,%f)", _saveNum, bodyNum, fixtureNum, edge_shape->m_vertices[i].x, edge_shape->m_vertices[i].y);
+						int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);//3
+						if(result!=SQLITE_OK)
+						log("insert poly_shape data failed!");
+					}
 				}
-			}
-			fixtureNum++;
+				fixtureNum++;
+			}	
 		}
 		if(hasFixture)
 		{
@@ -1331,6 +1343,11 @@ void PhysicsManager::saveJoint()
 		auto type = joint->GetType();
 		int bodyA = ((BodyInfo*)joint->GetBodyA()->GetUserData())->num;
 		int bodyB = ((BodyInfo*)joint->GetBodyB()->GetUserData())->num;
+		//int toGround = 0;
+		//if(_groundBody == joint->GetBodyA())
+		//{
+		//	toGround = 1;
+		//}
 		if(type == b2JointType::e_wheelJoint)
 		{
 			auto wj = dynamic_cast<b2WheelJoint*>(joint);
@@ -1369,6 +1386,58 @@ void PhysicsManager::saveJoint()
 				log("insert distance joint data failed!==>%s",sql->getCString());
 			}
 		}
+
+		if(type == b2JointType::e_revoluteJoint)
+		{
+			auto rj = dynamic_cast<b2RevoluteJoint*>(joint);
+			float anchorAx = rj->GetLocalAnchorA().x;
+			float anchorAy = rj->GetLocalAnchorA().y;
+			float upperAngle = rj->GetUpperLimit()*180/b2_pi;
+			float lowerAngle = rj->GetLowerLimit()*180/b2_pi;
+			int enableLimit = rj->IsLimitEnabled()?1:0;
+			float motorSpeed = rj->GetMotorSpeed();
+			float maxMotorTorque = rj->GetMaxMotorTorque();
+			int enableMotor = rj->IsMotorEnabled();
+			int collideConnected = rj->GetCollideConnected()?1:0;
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,anchorAx,"
+				"anchorAy,upperAngle,lowerAngle,enableLimit,motorSpeed,maxMotorTorque,enableMotor) "
+				" values(%d,%d,%d,%d,%d,%f,%f,%f,%f,%d,%f,%f,%d)",
+						_saveNum, type, bodyA, bodyB, collideConnected, anchorAx, anchorAy, upperAngle, lowerAngle,
+						enableLimit, motorSpeed, maxMotorTorque, enableMotor);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert revolute joint data failed!==>%s",sql->getCString());
+			}
+		}
+		if(type == b2JointType::e_prismaticJoint)
+		{
+			auto rj = dynamic_cast<b2PrismaticJoint*>(joint);
+			float anchorAx = rj->GetLocalAnchorA().x;
+			float anchorAy = rj->GetLocalAnchorA().y;
+			float anchorBx = rj->GetLocalAnchorB().x;
+			float anchorBy = rj->GetLocalAnchorB().y;
+			float axisx = rj->GetLocalAxisA().x;
+			float axisy = rj->GetLocalAxisA().y;
+			float upperTranslation = rj->GetUpperLimit();
+			float lowerTranslation = rj->GetLowerLimit();
+			int enableLimit = rj->IsLimitEnabled()?1:0;
+			float motorSpeed = rj->GetMotorSpeed();
+			float maxMotorForce = rj->GetMaxMotorForce();
+			int enableMotor = rj->IsMotorEnabled()?1:0;
+			int collideConnected = rj->GetCollideConnected()?1:0;
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,anchorAx,"
+				"anchorAy,anchorBx,anchorBy,axisx,axisy,upperTranslation,lowerTranslation,enableLimit,motorSpeed,maxMotorForce,enableMotor) "
+				" values(%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%d,%f,%f,%d)",
+						_saveNum, type, bodyA, bodyB, collideConnected, anchorAx, anchorAy, anchorBx, anchorBy, axisx, axisy, upperTranslation,
+						lowerTranslation, enableLimit, motorSpeed, maxMotorForce, enableMotor);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert revolute joint data failed!==>%s",sql->getCString());
+			}
+
+		}
 	}
 }
 
@@ -1393,6 +1462,12 @@ void PhysicsManager::clearSave(int saveNum)
 		{
 			log("delete poly_shape data failed! %s", sql->getCString());
 		}
+		sql = String::createWithFormat("delete from joint where save=%d", saveNum);
+		result=sqlite3_exec(_db, sql->getCString(), NULL, NULL, NULL);
+		if(result!=SQLITE_OK)
+		{
+			log("delete joint data failed! %s", sql->getCString());
+		}
 }
 void PhysicsManager::load(int loadNum)
 {
@@ -1412,13 +1487,14 @@ void PhysicsManager::load(int loadNum)
 void PhysicsManager::loadJoint()
 {
 	auto sql = String::createWithFormat("select type,bodyA,bodyB,enableMotor,motorSpeed,maxMotorTorque,"
-						"frequencyHz,dampingRatio,collideConnected,anchorAx,anchorAy,anchorBx,anchorBy "
+						"frequencyHz,dampingRatio,collideConnected,anchorAx,anchorAy,anchorBx,anchorBy,toGround,"
+						"upperAngle,lowerAngle,enableLimit,axisx,axisy,upperTranslation,lowerTranslation,maxMotorForce "
 						"from joint where save=%d", _saveNum);
 	sqlite3_stmt* statement;
 	int result=sqlite3_prepare_v2(_db, sql->getCString(), -1, &statement, NULL);
 	if(result!=SQLITE_OK)
 	{
-		log("select joint data failed!");
+		log("select joint data failed!=>%s", sql->getCString());
 		return;
 	}
 	while(sqlite3_step(statement) == SQLITE_ROW)
@@ -1427,8 +1503,19 @@ void PhysicsManager::loadJoint()
 		_jointType = b2JointType(type);
 		int bodyANum = sqlite3_column_int(statement, 1);
 		int bodyBNum = sqlite3_column_int(statement, 2);
+//		_toGround = sqlite3_column_int(statement, 13);
+		_toGround = bodyANum == -1;
 		b2Body* bodyA = _bodies[bodyANum];
 		b2Body* bodyB = _bodies[bodyBNum];
+		if(_toGround)
+		{
+			bodyA = _groundBody;
+		}
+
+		if(!bodyA||!bodyB)
+		{
+			continue;
+		}
 		if(_jointType == b2JointType::e_wheelJoint)
 		{
 			_enableMotor = sqlite3_column_int(statement, 3);
@@ -1437,7 +1524,7 @@ void PhysicsManager::loadJoint()
 			_frequencyHz = sqlite3_column_double(statement, 6);
 			_dampingRatio = sqlite3_column_double(statement, 7);
 			_collideConnected = sqlite3_column_int(statement, 8);
-			addJoint(bodyA, bodyB, bodyA->GetPosition(), bodyB->GetPosition());
+			addJoint(bodyA, bodyB, b2Vec2(), b2Vec2());
 		}
 		if(_jointType == b2JointType::e_distanceJoint)
 		{
@@ -1451,6 +1538,39 @@ void PhysicsManager::loadJoint()
 			auto anchorA = b2Vec2(anchorAx, anchorAy);
 			auto anchorB = b2Vec2(anchorBx, anchorBy);
 			addJoint(bodyA, bodyB, bodyA->GetWorldPoint(anchorA), bodyB->GetWorldPoint(anchorB));
+		}
+		if(_jointType == b2JointType::e_revoluteJoint)
+		{
+			float anchorAx = sqlite3_column_double(statement, 9);
+			float anchorAy = sqlite3_column_double(statement, 10);
+			b2Vec2 p3 = bodyA->GetWorldPoint(b2Vec2(anchorAx, anchorAy));
+			_upperAngle = sqlite3_column_double(statement, 14);
+			_lowerAngle = sqlite3_column_double(statement, 15);
+			_enableLimit = sqlite3_column_int(statement, 16);
+			_enableMotor = sqlite3_column_int(statement, 3);
+			_motorSpeed = sqlite3_column_double(statement, 4);
+			_maxMotorTorque = sqlite3_column_double(statement, 5);
+			_collideConnected = sqlite3_column_int(statement, 8);
+			addJoint(bodyA, bodyB, b2Vec2(), b2Vec2(), p3);
+		}
+		if(_jointType == b2JointType::e_prismaticJoint)
+		{
+			float anchorAx = sqlite3_column_double(statement, 9);
+			float anchorAy = sqlite3_column_double(statement, 10);
+			b2Vec2 p3 = bodyA->GetWorldPoint(b2Vec2(anchorAx, anchorAy));
+			float anchorBx = sqlite3_column_double(statement, 11);
+			float anchorBy = sqlite3_column_double(statement, 12);
+			float axisx = sqlite3_column_double(statement, 17);
+			float axisy = sqlite3_column_double(statement, 18);
+			b2Vec2 axis = bodyA->GetWorldVector(b2Vec2(axisx, axisy));
+			_upperTranslation = sqlite3_column_double(statement, 19);
+			_lowerTranslation = sqlite3_column_double(statement, 20);
+			_enableLimit = sqlite3_column_int(statement, 16);
+			_enableMotor = sqlite3_column_int(statement, 3);
+			_motorSpeed = sqlite3_column_double(statement, 4);
+			_maxMotorForce = sqlite3_column_double(statement, 21);
+			_collideConnected = sqlite3_column_int(statement, 8);
+			addJoint(bodyA, bodyB, b2Vec2(), b2Vec2(), p3, p3 + axis, b2Vec2(anchorBx,anchorBy));
 		}
 	}
 }
@@ -1500,8 +1620,9 @@ void PhysicsManager::loadOneBody(sqlite3* pdb, int save, int bodyNum, int type, 
 {
 	b2BodyDef bodydef;
 	bodydef.type = b2BodyType(type);
-	auto world = PhysicsManager::getInstance()->getWorld();
-	auto body = world->CreateBody(&bodydef);
+//	auto world = PhysicsManager::getInstance()->getWorld();
+	while(_world->IsLocked());
+	auto body = _world->CreateBody(&bodydef);
 	body->SetSleepingAllowed(true);
 	body->SetLinearDamping(0);
 	body->SetAngularDamping(0);
@@ -1543,6 +1664,7 @@ void PhysicsManager::loadOneBody(sqlite3* pdb, int save, int bodyNum, int type, 
 				fixtureDef.friction = friction;
 				fixtureDef.restitution = restitution;
 				fixtureDef.shape = &shape;
+				while(_world->IsLocked());
 				body->CreateFixture(&fixtureDef);
 			}
 
@@ -1578,17 +1700,16 @@ void PhysicsManager::loadOneBody(sqlite3* pdb, int save, int bodyNum, int type, 
 				fixtureDef.friction = friction;
 				fixtureDef.restitution = restitution;
 				fixtureDef.shape = &shape;
+				while(_world->IsLocked());
 				body->CreateFixture(&fixtureDef);
 			}
 		}
 	}
 
-
-	if(body){
-		body->SetTransform(b2Vec2(
-			x,
-			y),
-			angle);
+	while(_world->IsLocked());
+	if(body)
+	{
+		body->SetTransform(b2Vec2(x,y),	angle);
 	}
 }
 
@@ -1611,7 +1732,8 @@ void PhysicsManager::createTables(sqlite3* pdb)
 
 	sql="create table if not exists joint(ID integer primary key autoincrement,save integer,type integer,bodyA integer, bodyB integer,"
 		"enableMotor bit,motorSpeed float, maxMotorTorque float, frequencyHz float, dampingRatio float, collideConnected bit,"
-		"anchorAx float, anchorAy float, anchorBx float, anchorBy float)";
+		"anchorAx float, anchorAy float, anchorBx float, anchorBy float, toGround bit, upperAngle float, lowerAngle float, enableLimit bit,"
+		"axisx float,axisy float,upperTranslation float,lowerTranslation float,maxMotorForce float)";
 	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
 	if(result!=SQLITE_OK)
 		log("create table failed");
@@ -1622,7 +1744,12 @@ void PhysicsManager::clearWorld()
 {
 	for(auto bd = _world->GetBodyList(); bd; bd = bd->GetNext())
 	{
-		_bodyDelete.push_back(bd);
+		auto bodyInfo = static_cast<BodyInfo*>(bd->GetUserData());
+		if(bodyInfo && bodyInfo->num >=0)
+		{
+			_bodyDelete.push_back(bd);
+		}
+		
 	}
 }
 

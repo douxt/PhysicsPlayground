@@ -44,8 +44,8 @@ public:
 
 	void addCustomPolygon(const std::vector<Vec2>& points);
 	void addCircle(Point pos, float radias);
-	void addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3 = Vec2(), const Vec2& pos4 = Vec2());
-	void addJoint(b2Body* body1, b2Body* body2, const b2Vec2& pos1, const b2Vec2& pos2,const b2Vec2& pos3 = b2Vec2(), const b2Vec2& pos4 = b2Vec2());
+	void addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3 = Vec2(0,0), const Vec2& pos4 = Vec2(0,0));
+	void addJoint(b2Body* body1, b2Body* body2, const b2Vec2& pos1, const b2Vec2& pos2,const b2Vec2& pos3 = b2Vec2(0,0), const b2Vec2& pos4 = b2Vec2(0,0),const b2Vec2& pos5 = b2Vec2(0,0));
 	void addNoCollide(const Vec2& pos1, const Vec2& pos2);
 
 	b2Body* getBodyAt(const Vec2& pos);

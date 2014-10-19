@@ -262,7 +262,7 @@ void MenuLayer::addUI()
 		_popCurrent2 = popPrismaticJointParameter;
 
 		_main->clearMarks();
-		_main->setMaxMark(3);
+		_main->setMaxMark(4);
 	});
 
 	popJoint->addButton("Pulley",[&,popPulleyJointParameter](){

@@ -322,13 +322,13 @@ void MainScene::addJoint()
 			return;
 		PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition());
 	}
-	if(jointType == b2JointType::e_revoluteJoint || jointType == b2JointType::e_prismaticJoint || jointType == b2JointType::e_weldJoint )
+	if(jointType == b2JointType::e_revoluteJoint  || jointType == b2JointType::e_weldJoint )
 	{
 		if(_marks.size()<3)
 			return;
 		PhysicsManager::getInstance()->addJoint(_marks.at(0)->getPosition(),_marks.at(1)->getPosition(),_marks.at(2)->getPosition());
 	}
-	if(jointType == b2JointType::e_pulleyJoint)
+	if(jointType == b2JointType::e_pulleyJoint || jointType == b2JointType::e_prismaticJoint)
 	{
 		if(_marks.size()<4)
 			return;
