@@ -429,6 +429,7 @@ void MenuLayer::addUI()
 	popPause->addButton("New", nullptr);
 	popPause->addButton("Save", nullptr);
 	popPause->addButton("Load", nullptr);
+	popPause->addButton("Next", nullptr);
 	popPause->setPosition(origin.x, origin.y + visibleSize.height);
 	popPause->setMargin(50);
 	popPause->setName("popPause");
@@ -464,6 +465,10 @@ void MenuLayer::addUI()
 
 	popPause->setCallback("Load",[&](){
 		PhysicsManager::getInstance()->load();
+	});
+
+	popPause->setCallback("Next",[&](){
+		PhysicsManager::getInstance()->next();
 	});
 
 	popPause->popEnter();

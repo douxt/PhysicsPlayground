@@ -469,11 +469,11 @@ void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& po
 
 void PhysicsManager::addJoint(b2Body* body1, b2Body* body2,const b2Vec2& p1, const b2Vec2& p2, const b2Vec2& p3 , const b2Vec2& p4, const b2Vec2& p5 )
 {
-	if((body1 || _toGround)&& body2)
+	if((body1 || (_toGround && _jointType != b2JointType::e_gearJoint))&& body2)
 	{
 
 
-		if(_toGround)
+		if(_toGround &&_jointType != b2JointType::e_gearJoint)
 			body1 = _groundBody;
 		if(_jointType == b2JointType::e_wheelJoint)
 		{
@@ -704,10 +704,12 @@ void PhysicsManager::doDelete()
 				if(jl->joint)
 					_jointDelete.push_back(jl->joint);
 			}
+			b2Joint* gj = nullptr;
 			for(auto joint : _jointDelete)
 			{
 				if(joint->GetType() == b2JointType::e_gearJoint)
 				{
+					gj = joint;
 					_world->DestroyJoint(joint);
 				}
 				if(joint->GetType() == b2JointType::e_wheelJoint)
@@ -717,6 +719,14 @@ void PhysicsManager::doDelete()
 					{
 						_wheelJoints.erase(wj);
 					}
+				}
+			}
+			if(gj)
+			{
+				auto ji = std::find(_jointDelete.begin(),_jointDelete.end(), gj);
+				if(ji != _jointDelete.end())
+				{
+					_jointDelete.erase(ji);
 				}
 			}
 			for(auto joint : _jointDelete)
@@ -1207,17 +1217,19 @@ bool PhysicsManager::CustomFilter::ShouldCollide(b2Fixture* fixtureA, b2Fixture*
 
 void PhysicsManager::addGadgetAt(const Vec2& pos)
 {
-	b2BodyDef bodydef;
-//	bodydef.type = b2_dynamicBody;
-	int bt = _bodyType;
-	bodydef.type = getBodyType(bt);
-	auto body = _world->CreateBody(&bodydef);
-	body->SetSleepingAllowed(true);
-	body->SetLinearDamping(0);
-	body->SetAngularDamping(0);
-	BodyInfo* bodyInfo = BodyInfo::create();
-	bodyInfo->retain();
-	body->SetUserData(bodyInfo);
+//	b2BodyDef bodydef;
+////	bodydef.type = b2_dynamicBody;
+//	int bt = _bodyType;
+//	bodydef.type = getBodyType(bt);
+//	auto body = _world->CreateBody(&bodydef);
+//	body->SetSleepingAllowed(true);
+//	body->SetLinearDamping(0);
+//	body->SetAngularDamping(0);
+//	BodyInfo* bodyInfo = BodyInfo::create();
+//	bodyInfo->retain();
+//	body->SetUserData(bodyInfo);
+	
+	auto body = createBody();
 
 	_thrusters.push_back(body);
 	b2Vec2 base = b2Vec2(pos.x/PTM_RATIO, pos.y/PTM_RATIO);
@@ -1258,7 +1270,7 @@ void PhysicsManager::save()
 {
 	if(_saveNum == -1)
 	{
-		_saveNum = getMaxSaveNum(_db);
+		_saveNum = getMaxSaveNum();
 		if(_saveNum == -1)
 		{
 			_saveNum=1;
@@ -1341,8 +1353,10 @@ void PhysicsManager::saveJoint()
 	for(auto joint=_world->GetJointList(); joint; joint=joint->GetNext())
 	{
 		auto type = joint->GetType();
-		int bodyA = ((BodyInfo*)joint->GetBodyA()->GetUserData())->num;
-		int bodyB = ((BodyInfo*)joint->GetBodyB()->GetUserData())->num;
+		b2Body* bodyA = joint->GetBodyA();
+		b2Body* bodyB = joint->GetBodyB();
+		int bodyANum = ((BodyInfo*)bodyA->GetUserData())->num;
+		int bodyBNum = ((BodyInfo*)bodyB->GetUserData())->num;
 		//int toGround = 0;
 		//if(_groundBody == joint->GetBodyA())
 		//{
@@ -1358,8 +1372,8 @@ void PhysicsManager::saveJoint()
 			float dampingRatio = wj->GetSpringDampingRatio();
 			int collideConnected = wj->GetCollideConnected()?1:0;
 			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,enableMotor,motorSpeed,maxMotorTorque,"
-						"frequencyHz,dampingRatio,collideConnected) values(%d,%d,%d,%d,%d,%f,%f,%f,%f,%d)", _saveNum, type, bodyA,
-						bodyB, enableMotor, motorSpeed, maxMotorTorque, frequencyHz, dampingRatio, collideConnected);
+						"frequencyHz,dampingRatio,collideConnected) values(%d,%d,%d,%d,%d,%f,%f,%f,%f,%d)", _saveNum, type, bodyANum,
+						bodyBNum, enableMotor, motorSpeed, maxMotorTorque, frequencyHz, dampingRatio, collideConnected);
 			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
 			if(result!=SQLITE_OK)
 			{
@@ -1378,7 +1392,7 @@ void PhysicsManager::saveJoint()
 			float anchorBy = dj->GetLocalAnchorB().y;
 			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,frequencyHz,dampingRatio,"
 						"collideConnected,anchorAx,anchorAy,anchorBx,anchorBy) values(%d,%d,%d,%d,%f,%f,%d,%f,%f,%f,%f)",
-						_saveNum, type, bodyA, bodyB, frequencyHz, dampingRatio, collideConnected, anchorAx, anchorAy,
+						_saveNum, type, bodyANum, bodyBNum, frequencyHz, dampingRatio, collideConnected, anchorAx, anchorAy,
 						anchorBx, anchorBy);
 			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
 			if(result!=SQLITE_OK)
@@ -1402,7 +1416,7 @@ void PhysicsManager::saveJoint()
 			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,anchorAx,"
 				"anchorAy,upperAngle,lowerAngle,enableLimit,motorSpeed,maxMotorTorque,enableMotor) "
 				" values(%d,%d,%d,%d,%d,%f,%f,%f,%f,%d,%f,%f,%d)",
-						_saveNum, type, bodyA, bodyB, collideConnected, anchorAx, anchorAy, upperAngle, lowerAngle,
+						_saveNum, type, bodyANum, bodyBNum, collideConnected, anchorAx, anchorAy, upperAngle, lowerAngle,
 						enableLimit, motorSpeed, maxMotorTorque, enableMotor);
 			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
 			if(result!=SQLITE_OK)
@@ -1429,15 +1443,125 @@ void PhysicsManager::saveJoint()
 			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,anchorAx,"
 				"anchorAy,anchorBx,anchorBy,axisx,axisy,upperTranslation,lowerTranslation,enableLimit,motorSpeed,maxMotorForce,enableMotor) "
 				" values(%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%d,%f,%f,%d)",
-						_saveNum, type, bodyA, bodyB, collideConnected, anchorAx, anchorAy, anchorBx, anchorBy, axisx, axisy, upperTranslation,
+						_saveNum, type, bodyANum, bodyBNum, collideConnected, anchorAx, anchorAy, anchorBx, anchorBy, axisx, axisy, upperTranslation,
 						lowerTranslation, enableLimit, motorSpeed, maxMotorForce, enableMotor);
 			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
 			if(result!=SQLITE_OK)
 			{
-				log("insert revolute joint data failed!==>%s",sql->getCString());
+				log("insert prismatic joint data failed!==>%s",sql->getCString());
 			}
 
 		}
+		if(type == b2JointType::e_pulleyJoint)
+		{
+			auto pj = dynamic_cast<b2PulleyJoint*>(joint);
+			float groundAx = pj->GetGroundAnchorA().x;
+			float groundAy = pj->GetGroundAnchorA().y;
+			float groundBx = pj->GetGroundAnchorB().x;
+			float groundBy = pj->GetGroundAnchorB().y;
+			b2Vec2 anchorA = bodyA->GetLocalPoint(pj->GetAnchorA());
+			b2Vec2 anchorB = bodyB->GetLocalPoint(pj->GetAnchorB());
+			float anchorAx = anchorA.x;
+			float anchorAy = anchorA.y;
+			float anchorBx = anchorB.x;
+			float anchorBy = anchorB.y;
+			float pulleyRatio = pj->GetRatio();
+			int collideConnected = pj->GetCollideConnected()?1:0;
+
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,anchorAx,"
+				"anchorAy,anchorBx,anchorBy,groundAx,groundAy,groundBx,groundBy,pulleyRatio) "
+				" values(%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f)",
+						_saveNum, type, bodyANum, bodyBNum, collideConnected, anchorAx, anchorAy, anchorBx, anchorBy,
+						groundAx, groundAy, groundBx, groundBy,pulleyRatio);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert pulley joint data failed!==>%s",sql->getCString());
+			}
+		}
+		if(type == b2JointType::e_weldJoint)
+		{
+			auto wj = dynamic_cast<b2WeldJoint*>(joint);
+			float anchorAx = wj->GetLocalAnchorA().x;
+			float anchorAy = wj->GetLocalAnchorA().y;
+			float frequencyHz = wj->GetFrequency();
+			float dampingRatio = wj->GetDampingRatio();
+			int collideConnected = wj->GetCollideConnected()?1:0;
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,anchorAx,"
+				"anchorAy,frequencyHz,dampingRatio) "
+				" values(%d,%d,%d,%d,%d,%f,%f,%f,%f)",
+						_saveNum, type, bodyANum, bodyBNum, collideConnected, anchorAx, anchorAy, frequencyHz,
+						dampingRatio);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert weld joint data failed!==>%s",sql->getCString());
+			}
+		}
+		if(type == b2JointType::e_ropeJoint)
+		{
+			auto rj = dynamic_cast<b2RopeJoint*>(joint);
+			float anchorAx = rj->GetLocalAnchorA().x;
+			float anchorAy = rj->GetLocalAnchorA().y;
+			float anchorBx = rj->GetLocalAnchorB().x;
+			float anchorBy = rj->GetLocalAnchorB().y;
+			int collideConnected = rj->GetCollideConnected()?1:0;
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,anchorAx,"
+				"anchorAy,anchorBx,anchorBy) "
+				" values(%d,%d,%d,%d,%d,%f,%f,%f,%f)",
+						_saveNum, type, bodyANum, bodyBNum, collideConnected, anchorAx, anchorAy, anchorBx,
+						anchorBy);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert rope joint data failed!==>%s",sql->getCString());
+			}
+		}
+		if(type == b2JointType::e_frictionJoint)
+		{
+			auto fj = dynamic_cast<b2FrictionJoint*>(joint);
+			int collideConnected = fj->GetCollideConnected()?1:0;
+			float maxForce = fj->GetMaxForce();
+			float maxTorque = fj->GetMaxTorque();
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,maxForce,"
+				"maxTorque)  values(%d,%d,%d,%d,%d,%f,%f)",
+						_saveNum, type, bodyANum, bodyBNum, collideConnected, maxForce, maxTorque);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert friction joint data failed!==>%s",sql->getCString());
+			}
+		}
+		if(type == b2JointType::e_motorJoint)
+		{
+			auto mj = dynamic_cast<b2MotorJoint*>(joint);
+			int collideConnected = mj->GetCollideConnected()?1:0;
+			float maxForce = mj->GetMaxForce();
+			float maxTorque = mj->GetMaxTorque();
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,maxForce,"
+				"maxTorque)  values(%d,%d,%d,%d,%d,%f,%f)",
+						_saveNum, type, bodyANum, bodyBNum, collideConnected, maxForce, maxTorque);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert motor joint data failed!==>%s",sql->getCString());
+			}			
+		}
+		if(type == b2JointType::e_gearJoint)
+		{
+			auto gj = dynamic_cast<b2GearJoint*>(joint);
+			int collideConnected = gj->GetCollideConnected()?1:0;
+			float gearRatio = gj->GetRatio();
+			auto sql = String::createWithFormat("insert into joint(save,type,bodyA,bodyB,collideConnected,gearRatio) "
+				"values(%d,%d,%d,%d,%d,%f)",
+						_saveNum, type, bodyANum, bodyBNum, collideConnected, gearRatio);
+			int result=sqlite3_exec(_db,sql->getCString(),NULL,NULL,NULL);
+			if(result!=SQLITE_OK)
+			{
+				log("insert gear joint data failed!==>%s",sql->getCString());
+			}
+		}
+
 	}
 }
 
@@ -1469,6 +1593,19 @@ void PhysicsManager::clearSave(int saveNum)
 			log("delete joint data failed! %s", sql->getCString());
 		}
 }
+void PhysicsManager::next()
+{
+	int maxSaveNum = getMaxSaveNum();
+	if(_saveNum == -1 || _saveNum == maxSaveNum)
+	{
+		_saveNum =1;
+	}else
+	{
+		_saveNum++;
+	}
+	load(_saveNum);
+}
+
 void PhysicsManager::load(int loadNum)
 {
 //	PhysicsManager::purgeInstance();
@@ -1476,7 +1613,7 @@ void PhysicsManager::load(int loadNum)
 	_bodies.clear();
 	if(loadNum == -1)
 	{
-		loadNum = PhysicsManager::getInstance()->getMaxSaveNum(_db);
+		loadNum = PhysicsManager::getInstance()->getMaxSaveNum();
 	}
 	_saveNum = loadNum;
 
@@ -1488,8 +1625,9 @@ void PhysicsManager::loadJoint()
 {
 	auto sql = String::createWithFormat("select type,bodyA,bodyB,enableMotor,motorSpeed,maxMotorTorque,"
 						"frequencyHz,dampingRatio,collideConnected,anchorAx,anchorAy,anchorBx,anchorBy,toGround,"
-						"upperAngle,lowerAngle,enableLimit,axisx,axisy,upperTranslation,lowerTranslation,maxMotorForce "
-						"from joint where save=%d", _saveNum);
+						"upperAngle,lowerAngle,enableLimit,axisx,axisy,upperTranslation,lowerTranslation,maxMotorForce,"
+						"groundAx,groundAy,groundBx,groundBy,pulleyRatio,maxForce,maxTorque,gearRatio "
+						"from joint where save=%d order by type", _saveNum);
 	sqlite3_stmt* statement;
 	int result=sqlite3_prepare_v2(_db, sql->getCString(), -1, &statement, NULL);
 	if(result!=SQLITE_OK)
@@ -1572,6 +1710,60 @@ void PhysicsManager::loadJoint()
 			_collideConnected = sqlite3_column_int(statement, 8);
 			addJoint(bodyA, bodyB, b2Vec2(), b2Vec2(), p3, p3 + axis, b2Vec2(anchorBx,anchorBy));
 		}
+		if(_jointType == b2JointType::e_pulleyJoint)
+		{
+			float anchorAx = sqlite3_column_double(statement, 9);
+			float anchorAy = sqlite3_column_double(statement, 10);
+			float anchorBx = sqlite3_column_double(statement, 11);
+			float anchorBy = sqlite3_column_double(statement, 12);
+			float groundAx = sqlite3_column_double(statement, 22);
+			float groundAy = sqlite3_column_double(statement, 23);
+			float groundBx = sqlite3_column_double(statement, 24);
+			float groundBy = sqlite3_column_double(statement, 25);
+			b2Vec2 p1 = bodyA->GetWorldPoint(b2Vec2(anchorAx, anchorAy));
+			b2Vec2 p2 = bodyB->GetWorldPoint(b2Vec2(anchorBx, anchorBy));
+			b2Vec2 p3 = b2Vec2(groundAx, groundAy);
+			b2Vec2 p4 = b2Vec2(groundBx, groundBy);
+			_collideConnected = sqlite3_column_int(statement, 8);
+			_pulleyRatio = sqlite3_column_double(statement, 26);
+			addJoint(bodyA, bodyB, p1, p2, p3, p4);
+		}
+		if(_jointType == b2JointType::e_weldJoint)
+		{
+			float anchorAx = sqlite3_column_double(statement, 9);
+			float anchorAy = sqlite3_column_double(statement, 10);
+			b2Vec2 p3 = bodyA->GetWorldPoint(b2Vec2(anchorAx, anchorAy));
+			_frequencyHz = sqlite3_column_double(statement, 6);
+			_dampingRatio = sqlite3_column_double(statement, 7);
+			_collideConnected = sqlite3_column_int(statement, 8);
+			addJoint(bodyA, bodyB, b2Vec2(), b2Vec2(), p3);
+		}
+		if(_jointType == b2JointType::e_ropeJoint)
+		{
+			float anchorAx = sqlite3_column_double(statement, 9);
+			float anchorAy = sqlite3_column_double(statement, 10);
+			float anchorBx = sqlite3_column_double(statement, 11);
+			float anchorBy = sqlite3_column_double(statement, 12);
+
+			b2Vec2 p1 = bodyA->GetWorldPoint(b2Vec2(anchorAx, anchorAy));
+			b2Vec2 p2 = bodyB->GetWorldPoint(b2Vec2(anchorBx, anchorBy));
+			_collideConnected = sqlite3_column_int(statement, 8);
+			addJoint(bodyA, bodyB, p1, p2);
+		}
+		if(_jointType == b2JointType::e_frictionJoint || _jointType == b2JointType::e_motorJoint)
+		{
+			_collideConnected = sqlite3_column_int(statement, 8);
+			_maxForce = sqlite3_column_double(statement, 27);
+			_maxTorque = sqlite3_column_double(statement, 28);
+			addJoint(bodyA, bodyB);
+		}
+		
+		if(_jointType == b2JointType::e_gearJoint)
+		{
+			_collideConnected = sqlite3_column_int(statement, 8);
+			_gearRatio = sqlite3_column_double(statement, 29);
+			addJoint(bodyA, bodyB);
+		}
 	}
 }
 
@@ -1599,7 +1791,7 @@ void PhysicsManager::loadBody()
 	}
 }
 
-int PhysicsManager::getMaxSaveNum(sqlite3* pdb)
+int PhysicsManager::getMaxSaveNum()
 {
 	std::string sql = "select max(save) from body";
 	sqlite3_stmt* statement;
@@ -1733,7 +1925,8 @@ void PhysicsManager::createTables(sqlite3* pdb)
 	sql="create table if not exists joint(ID integer primary key autoincrement,save integer,type integer,bodyA integer, bodyB integer,"
 		"enableMotor bit,motorSpeed float, maxMotorTorque float, frequencyHz float, dampingRatio float, collideConnected bit,"
 		"anchorAx float, anchorAy float, anchorBx float, anchorBy float, toGround bit, upperAngle float, lowerAngle float, enableLimit bit,"
-		"axisx float,axisy float,upperTranslation float,lowerTranslation float,maxMotorForce float)";
+		"axisx float,axisy float,upperTranslation float,lowerTranslation float,maxMotorForce float,groundAx float,groundAy float,"
+		"groundBx float,groundBy float,pulleyRatio float,maxForce float,maxTorque float,gearRatio float)";
 	result=sqlite3_exec(pdb,sql.c_str(),NULL,NULL,NULL);
 	if(result!=SQLITE_OK)
 		log("create table failed");
@@ -1759,4 +1952,6 @@ void PhysicsManager::newSave()
 	_saveNum = -1;
 	_bodyNum = 0;
 	_bodies.clear();
+	_wheelJoints.clear();
+	_thrusters.clear();
 }

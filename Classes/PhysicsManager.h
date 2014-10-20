@@ -45,7 +45,7 @@ public:
 	void addCustomPolygon(const std::vector<Vec2>& points);
 	void addCircle(Point pos, float radias);
 	void addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3 = Vec2(0,0), const Vec2& pos4 = Vec2(0,0));
-	void addJoint(b2Body* body1, b2Body* body2, const b2Vec2& pos1, const b2Vec2& pos2,const b2Vec2& pos3 = b2Vec2(0,0), const b2Vec2& pos4 = b2Vec2(0,0),const b2Vec2& pos5 = b2Vec2(0,0));
+	void addJoint(b2Body* body1, b2Body* body2, const b2Vec2& pos1 = b2Vec2(0,0), const b2Vec2& pos2 = b2Vec2(0,0),const b2Vec2& pos3 = b2Vec2(0,0), const b2Vec2& pos4 = b2Vec2(0,0),const b2Vec2& pos5 = b2Vec2(0,0));
 	void addNoCollide(const Vec2& pos1, const Vec2& pos2);
 
 	b2Body* getBodyAt(const Vec2& pos);
@@ -73,7 +73,7 @@ public:
 	void loadBody();
 	void loadJoint();
 
-	int getMaxSaveNum(sqlite3* pdb);
+	int getMaxSaveNum();
 	void createTables(sqlite3* pdb);
 	void clearWorld();
 	void newSave();
@@ -82,6 +82,7 @@ public:
 	void saveBody();
 	void saveJoint();
 
+	void next();
 public:
 	CC_SYNTHESIZE(TouchType, _touchType, TouchType);
 	CC_SYNTHESIZE(b2JointType, _jointType, JointType);
