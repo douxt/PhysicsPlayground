@@ -126,12 +126,12 @@ void MenuLayer::addUI()
 	this->addChild(popGearJointParameter);
 
 	auto pop = PopMenu::create();
-	pop->addButton("Move",[](){log("Test1 Touched!");});
-	pop->addButton("Add Regular",[](){log("Test2 Touched!");});
-	pop->addButton("Add Custom",[](){log("Test3 Touched!");});
-	pop->addButton("Add Joint",[](){log("Test4 Touched!");});
-	pop->addButton("No Collide",[](){log("Test4 Touched!");});
-	pop->addButton("Gadgets",[](){log("Test4 Touched!");});
+	pop->addButton("Move",nullptr);
+	pop->addButton("Add Regular",nullptr);
+	pop->addButton("Add Custom",nullptr);
+	pop->addButton("Add Joint",nullptr);
+	pop->addButton("No Collide",nullptr);
+	pop->addButton("Gadgets",nullptr);
 	pop->setPosition(origin.x + visibleSize.width - pop->getListViewContentSize().width, origin.y + visibleSize.height);
 	pop->setName("popMain");
 	this->addChild(pop);

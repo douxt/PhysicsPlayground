@@ -126,7 +126,6 @@ bool MainScene::onTouchBegan(Touch* touch, Event* event)
 	{
 		auto pos = this->convertToNodeSpace(touch->getLocation());
 		return doMark(pos);
-
 	}
 	if(PhysicsManager::getInstance()->getTouchType() == PhysicsManager::MOVE_TYPE)
 	{

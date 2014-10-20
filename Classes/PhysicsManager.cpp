@@ -177,31 +177,29 @@ void PhysicsManager::addRegularPolygon(Point pos)
 		addCircle(pos, _size);
 		return;
 	}
+	if(_sideNum < 3)
+	{
+		return;
+	}
 	auto body = createBody();
-//	body->~b2Body();
 	int num = _sideNum;
 	auto radias =  _size/PTM_RATIO;
-
 	auto points = new b2Vec2[num];
-	
+	// calculate the position of the vertices
 	for(int i=0; i<num; i++)
 	{
 		float angle = (float)i/num*2*b2_pi;
 		points[i] = b2Vec2(radias*cos(angle), radias*sin(angle));
 	}
-//	_body->SetFixedRotation(true);
 	b2PolygonShape shape;
-//	shape.SetAsBox(size.width/PTM_RATIO/2, size.height/PTM_RATIO/2);//, b2Vec2(-sz.width/PTM_RATIO/2, -sz.height/PTM_RATIO/2), 0
-//	b2Vec2 points[] ={b2Vec2(-1,0), b2Vec2(1, 0), b2Vec2(0, sqrt(3))};
 	shape.Set(points, num);
 	b2FixtureDef fixtureDef(_fixtureDef);
 	fixtureDef.shape = &shape;
 	body->CreateFixture(&fixtureDef);
 
+	//move body to the specified position.
 	if(body){
-		body->SetTransform(b2Vec2(
-			pos.x / PTM_RATIO,
-			pos.y / PTM_RATIO),
+		body->SetTransform(b2Vec2(pos.x / PTM_RATIO,pos.y / PTM_RATIO),
 			body->GetAngle());
 	}
 	delete [] points;
@@ -458,9 +456,9 @@ void PhysicsManager::addWheelJoint(const Vec2& pos)
 
 void PhysicsManager::addJoint(const Vec2& pos1, const Vec2& pos2, const Vec2& pos3, const Vec2& pos4)
 {
-	auto body1 = getBodyAt(pos1);
+	auto body1 = getBodyAt(pos1); //get the body at pos1.
 	auto body2 = getBodyAt(pos2);
-	auto p1 = b2Vec2(pos1.x/PTM_RATIO, pos1.y/PTM_RATIO);
+	auto p1 = b2Vec2(pos1.x/PTM_RATIO, pos1.y/PTM_RATIO); // do unit transform.
 	auto p2 = b2Vec2(pos2.x/PTM_RATIO, pos2.y/PTM_RATIO);
 	auto p3 = b2Vec2(pos3.x/PTM_RATIO, pos3.y/PTM_RATIO);
 	auto p4 = b2Vec2(pos4.x/PTM_RATIO, pos4.y/PTM_RATIO);
@@ -471,8 +469,6 @@ void PhysicsManager::addJoint(b2Body* body1, b2Body* body2,const b2Vec2& p1, con
 {
 	if((body1 || (_toGround && _jointType != b2JointType::e_gearJoint))&& body2)
 	{
-
-
 		if(_toGround &&_jointType != b2JointType::e_gearJoint)
 			body1 = _groundBody;
 		if(_jointType == b2JointType::e_wheelJoint)
@@ -480,7 +476,8 @@ void PhysicsManager::addJoint(b2Body* body1, b2Body* body2,const b2Vec2& p1, con
 			b2WheelJointDef wjd;
 			b2Vec2 axis(0.0f, 1.0f);
 			wjd.Initialize(body1, body2, body2->GetPosition(), axis);
-			wjd.enableMotor = _enableMotor;
+			// use the info set by UI.
+			wjd.enableMotor = _enableMotor;  
 			wjd.motorSpeed = _motorSpeed;
 			wjd.maxMotorTorque = _maxMotorTorque;
 			wjd.frequencyHz = _frequencyHz;
@@ -701,7 +698,7 @@ void PhysicsManager::doDelete()
 			_jointDelete.clear();
 			for(auto jl = body->GetJointList(); jl; jl = jl->next)
 			{
-				if(jl->joint)
+				if(jl->joint&&jl->joint->GetType()>b2JointType::e_unknownJoint&&jl->joint->GetType()<=b2JointType::e_motorJoint)
 					_jointDelete.push_back(jl->joint);
 			}
 			b2Joint* gj = nullptr;
