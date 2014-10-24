@@ -7,8 +7,8 @@ A tribute to Garry's Mod.
 It is advised to create a new project and then copy Classes and Resources folder into it.
 
 
-程序介绍与演示：
-http://www.cocoachina.com/bbs/read.php?tid-235433.html
+程序配套教程：
+http://cn.cocos2d-x.org/tutorial/show?id=1711
 
 
 Demo:
